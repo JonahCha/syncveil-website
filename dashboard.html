@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Dashboard – SyncVeil</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="https://cdn.jsdelivr.net/npm/lucide-static@0.344.0/icons/shield.svg" type="image/svg+xml">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #0f172a;
+        }
+
+        .org-name {
+            font-family: 'Rubik Mono One', monospace;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+        }
+
+        /* Sidebar Scrollbar */
+        .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 20px; }
+
+        /* Animations */
+        .animate-fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* FIXED TOGGLE SWITCH CSS */
+        .toggle-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 2.75rem; /* w-11 */
+            height: 1.5rem; /* h-6 */
+        }
+        
+        .toggle-checkbox {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-label {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1; /* slate-300 */
+            transition: .4s;
+            border-radius: 9999px;
+        }
+
+        .toggle-label:before {
+            position: absolute;
+            content: "";
+            height: 1.125rem; /* h-4.5 */
+            width: 1.125rem; /* w-4.5 */
+            left: 0.1875rem; /* left-0.5 */
+            bottom: 0.1875rem; /* bottom-0.5 */
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4f46e5; /* indigo-600 */
+        }
+
+        .toggle-checkbox:checked + .toggle-label:before {
+            transform: translateX(1.25rem);
+        }
+
+        /* Tab Logic */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeInUp 0.4s ease-out; }
+
+        /* Sidebar Active State */
+        .sidebar-link.active {
+            background-color: #eef2ff; /* indigo-50 */
+            color: #4338ca; /* indigo-700 */
+            font-weight: 600;
+        }
+        .sidebar-link.active i {
+            color: #4338ca;
+        }
+        .sidebar-link:hover:not(.active) {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+
+        /* Modal */
+        #shortcuts-modal.hidden { display: none; }
+        #shortcuts-modal { display: flex; }
+    </style>
+</head>
+<body class="flex min-h-screen overflow-hidden relative">
+
+    <!-- MOBILE MENU OVERLAY -->
+    <div id="mobile-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden glass transition-opacity"></div>
+
+    <!-- KEYBOARD SHORTCUTS MODAL -->
+    <div id="shortcuts-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center backdrop-blur-sm" onclick="toggleShortcuts()">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full m-4 transform transition-all" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-slate-900 flex items-center gap-2"><i data-lucide="keyboard" class="w-5 h-5 text-indigo-600"></i> Keyboard Shortcuts</h3>
+                <button onclick="toggleShortcuts()" class="text-slate-400 hover:text-slate-600" aria-label="Close shortcuts modal"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-sm text-slate-600">Quick Search</span>
+                    <kbd class="px-2 py-1 bg-slate-100 border border-slate-300 rounded text-xs font-mono text-slate-600">Cmd + K</kbd>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-sm text-slate-600">Go to Vault</span>
+                    <kbd class="px-2 py-1 bg-slate-100 border border-slate-300 rounded text-xs font-mono text-slate-600">G then V</kbd>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-sm text-slate-600">Lock App</span>
+                    <kbd class="px-2 py-1 bg-slate-100 border border-slate-300 rounded text-xs font-mono text-slate-600">Cmd + L</kbd>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span class="text-sm text-slate-600">Close Modal</span>
+                    <kbd class="px-2 py-1 bg-slate-100 border border-slate-300 rounded text-xs font-mono text-slate-600">Esc</kbd>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SIDEBAR Navigation -->
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col shadow-xl md:shadow-none">
+        <!-- Logo Area -->
+        <div class="h-20 flex items-center px-6 border-b border-slate-100 shrink-0">
+            <a href="app.html" class="flex items-center gap-2 no-underline group">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
+                    <i data-lucide="shield" class="w-5 h-5"></i>
+                </div>
+                <span class="text-xl org-name text-slate-900">SyncVeil</span>
+            </a>
+        </div>
+
+        <!-- Menu Items -->
+        <div class="flex-1 overflow-y-auto sidebar-scroll p-4 space-y-1">
+            <div class="px-3 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">My Privacy</div>
+            
+            <button onclick="switchTab('overview')" id="nav-overview" class="sidebar-link active w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Overview
+            </button>
+            
+            <button onclick="switchTab('vault')" id="nav-vault" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="lock" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Encrypted Vault
+            </button>
+            
+            <button onclick="switchTab('sharing')" id="nav-sharing" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="share-2" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Sharing
+            </button>
+
+            <div class="px-3 mt-6 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Security</div>
+
+            <button onclick="switchTab('security')" id="nav-security" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="shield-alert" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Security Center
+            </button>
+
+            <button onclick="switchTab('monitor')" id="nav-monitor" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="eye" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Breach Monitor
+            </button>
+
+            <button onclick="switchTab('activity')" id="nav-activity" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="list" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Activity Logs
+            </button>
+
+            <button onclick="switchTab('recovery')" id="nav-recovery" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="key-round" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Recovery & Backup
+            </button>
+
+            <button onclick="switchTab('devices')" id="nav-devices" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="smartphone" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Devices
+            </button>
+
+            <div class="px-3 mt-6 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Configuration</div>
+
+            <button onclick="switchTab('data')" id="nav-data" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="database" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Data Controls
+            </button>
+
+            <button onclick="switchTab('connections')" id="nav-connections" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="plug" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> App Connections
+            </button>
+
+            <button onclick="switchTab('billing')" id="nav-billing" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="credit-card" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Billing & Plan
+            </button>
+
+            <button onclick="switchTab('transparency')" id="nav-transparency" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="file-text" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Transparency
+            </button>
+
+            <button onclick="switchTab('settings')" id="nav-settings" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group">
+                <i data-lucide="settings" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Settings
+            </button>
+
+            <button onclick="switchTab('help')" id="nav-help" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 rounded-lg transition-all duration-200 group mt-4">
+                <i data-lucide="help-circle" class="w-5 h-5 group-hover:text-indigo-600 transition-colors"></i> Help & Support
+            </button>
+        </div>
+
+        <!-- User Footer -->
+        <div class="p-4 border-t border-slate-100 bg-white shrink-0">
+            <div class="flex items-center gap-3 mb-3 px-2">
+                <div class="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                    AM
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-slate-900 truncate">Alex Morgan</p>
+                    <p class="text-[11px] text-slate-500 truncate">alex.m@gmail.com</p>
+                </div>
+            </div>
+            <a href="app.html" class="flex items-center justify-center gap-2 w-full px-3 py-2.5 text-sm font-medium text-rose-600 bg-rose-50 rounded-lg hover:bg-rose-100 hover:text-rose-700 transition-colors">
+                <i data-lucide="log-out" class="w-4 h-4"></i> Sign Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="flex-1 flex flex-col h-screen overflow-hidden relative bg-slate-50/50">
+        <!-- Desktop Header with Search -->
+        <header class="hidden md:flex h-16 bg-white border-b border-slate-200 items-center justify-between px-8 z-20 shrink-0">
+            <!-- Search Bar -->
+            <div class="relative w-96">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i data-lucide="search" class="h-4 w-4 text-slate-400"></i>
+                </div>
+                <input type="text" class="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors" placeholder="Search files, logs, or devices... (Cmd+K)">
+            </div>
+
+            <!-- Header Actions -->
+            <div class="flex items-center gap-4">
+                <button class="relative p-2 text-slate-400 hover:text-indigo-600 transition-colors rounded-lg hover:bg-slate-50" aria-label="View notifications">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Mobile Header -->
+        <header class="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-20 shrink-0">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Toggle sidebar">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <span class="font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="shield" class="w-5 h-5 text-indigo-600"></i> SyncVeil
+                </span>
+            </div>
+            <button class="p-2 text-slate-600" aria-label="Search"><i data-lucide="search" class="w-5 h-5"></i></button>
+        </header>
+
+        <!-- Scrollable Content Area -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 pb-20 scroll-smooth">
+            <div class="max-w-5xl mx-auto space-y-6">
+                
+                <!-- ================= TAB: OVERVIEW ================= -->
+                <div id="tab-overview" class="tab-content active">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-6 tracking-tight">Hello, Alex</h1>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="p-2.5 bg-indigo-50 rounded-xl"><i data-lucide="shield-check" class="w-5 h-5 text-indigo-600"></i></div>
+                                <span class="text-sm font-medium text-slate-500">Security Score</span>
+                            </div>
+                            <div class="flex items-end gap-2">
+                                <h3 class="text-2xl font-bold text-slate-900">85/100</h3>
+                                <span class="text-xs text-green-600 font-bold mb-1.5 px-2 py-0.5 bg-green-50 rounded-full">Good</span>
+                            </div>
+                        </div>
+                         <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="p-2.5 bg-teal-50 rounded-xl"><i data-lucide="hard-drive" class="w-5 h-5 text-teal-600"></i></div>
+                                <span class="text-sm font-medium text-slate-500">Storage Used</span>
+                            </div>
+                            <div class="flex items-end gap-2">
+                                <h3 class="text-2xl font-bold text-slate-900">2.4 GB</h3>
+                                <span class="text-xs text-slate-400 font-bold mb-1.5">/ 15 GB</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="p-2.5 bg-rose-50 rounded-xl"><i data-lucide="alert-triangle" class="w-5 h-5 text-rose-600"></i></div>
+                                <span class="text-sm font-medium text-slate-500">Active Threats</span>
+                            </div>
+                            <div class="flex items-end gap-2">
+                                <h3 class="text-2xl font-bold text-slate-900">0</h3>
+                                <span class="text-xs text-slate-400 font-bold mb-1.5">All clear</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden mb-8">
+                        <div class="relative z-10">
+                            <h2 class="text-xl font-bold mb-2">Secure your first file</h2>
+                            <p class="text-indigo-100 text-sm mb-6 max-w-md leading-relaxed">Drag and drop sensitive documents into the Vault. They are encrypted client-side with AES-256 before upload, ensuring only you hold the keys.</p>
+                            <button onclick="switchTab('vault')" class="px-5 py-2.5 bg-white text-indigo-700 text-sm font-bold rounded-xl hover:bg-indigo-50 hover:scale-105 transition-all shadow-sm">
+                                Go to Vault
+                            </button>
+                        </div>
+                        <i data-lucide="file-lock" class="absolute right-8 top-1/2 -translate-y-1/2 w-40 h-40 text-white/10 rotate-12"></i>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: VAULT ================= -->
+                <div id="tab-vault" class="tab-content">
+                    <div class="flex justify-between items-end mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-900">Encrypted Vault</h1>
+                            <p class="text-slate-500 text-sm mt-1">Your personal files, encrypted with your private key.</p>
+                        </div>
+                        <button class="px-5 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 flex items-center gap-2">
+                            <i data-lucide="upload" class="w-4 h-4"></i> Upload File
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-12 text-center border-b border-slate-100">
+                            <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="folder-open" class="w-10 h-10 text-slate-300"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-slate-900">Your vault is empty</h3>
+                            <p class="text-slate-500 text-sm mt-2">Upload a file to start securing your data.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: SHARING ================= -->
+                <div id="tab-sharing" class="tab-content">
+                    <div class="flex justify-between items-end mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-900">Sharing & Access Control</h1>
+                            <p class="text-slate-500 text-sm mt-1">Manage active share links and permissions.</p>
+                        </div>
+                    </div>
+
+                    <!-- Toggles -->
+                    <div class="grid md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
+                            <span class="text-sm font-bold text-slate-700">Disable Public Sharing</span>
+                            <div class="toggle-wrapper">
+                                <input type="checkbox" id="share-toggle-1" class="toggle-checkbox"/>
+                                <label for="share-toggle-1" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
+                            <span class="text-sm font-bold text-slate-700">Require Password</span>
+                            <div class="toggle-wrapper">
+                                <input type="checkbox" checked id="share-toggle-2" class="toggle-checkbox"/>
+                                <label for="share-toggle-2" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
+                            <span class="text-sm font-bold text-slate-700">Auto-expire Links</span>
+                            <div class="toggle-wrapper">
+                                <input type="checkbox" checked id="share-toggle-3" class="toggle-checkbox"/>
+                                <label for="share-toggle-3" class="toggle-label"></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-slate-500">File</th>
+                                    <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-slate-500">Expires</th>
+                                    <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-slate-500">Views</th>
+                                    <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-slate-500 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 font-medium text-slate-900 flex items-center gap-3">
+                                        <i data-lucide="file-text" class="w-4 h-4 text-indigo-500"></i> tax_returns.pdf
+                                    </td>
+                                    <td class="px-6 py-4">In 2 days</td>
+                                    <td class="px-6 py-4">3</td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button class="text-rose-600 font-bold hover:text-rose-700 text-xs px-3 py-1.5 bg-rose-50 rounded-lg transition-colors">Revoke</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: SECURITY CENTER ================= -->
+                <div id="tab-security" class="tab-content">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-6">Security Center</h1>
+                    
+                    <div class="grid md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                            <div class="relative w-40 h-40 mb-6">
+                                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="8" />
+                                    <circle cx="50" cy="50" r="45" fill="none" stroke="#4f46e5" stroke-width="8" stroke-dasharray="283" stroke-dashoffset="40" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center flex-col">
+                                    <span class="text-4xl font-extrabold text-slate-900 tracking-tight">85</span>
+                                    <span class="text-xs text-slate-500 font-bold uppercase tracking-wide mt-1">Score</span>
+                                </div>
+                            </div>
+                            <h3 class="font-bold text-lg text-slate-900">Good Security Posture</h3>
+                            <p class="text-sm text-slate-500 mt-1">Enable 2FA to reach 100%</p>
+                        </div>
+                        <div class="space-y-4">
+                            <!-- Password Health (NEW) -->
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-4 shadow-sm">
+                                <div class="p-3 bg-indigo-100 rounded-xl"><i data-lucide="key-round" class="w-5 h-5 text-indigo-600"></i></div>
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-900">Password Health</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5">No weak or reused passwords found.</p>
+                                </div>
+                                <span class="ml-auto text-xs bg-green-50 text-green-700 px-3 py-1 rounded-md font-bold">Good</span>
+                            </div>
+
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-4 shadow-sm">
+                                <div class="p-3 bg-green-100 rounded-xl"><i data-lucide="lock" class="w-5 h-5 text-green-600"></i></div>
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-900">Encryption Status</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5">AES-256 enabled locally.</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-4 shadow-sm">
+                                <div class="p-3 bg-yellow-100 rounded-xl"><i data-lucide="smartphone" class="w-5 h-5 text-yellow-600"></i></div>
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-900">2FA Status</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5">Not enabled yet. Recommended.</p>
+                                </div>
+                                <button onclick="switchTab('settings')" class="ml-auto text-xs bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-bold hover:bg-indigo-100 transition-colors">Enable</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="text-lg font-bold text-slate-900 mb-4">Security Policies</h3>
+                    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden divide-y divide-slate-100 shadow-sm">
+                        <div class="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                            <div>
+                                <span class="text-sm font-bold text-slate-800">Force 2FA for all logins</span>
+                                <p class="text-xs text-slate-500 mt-0.5">Require second factor every time.</p>
+                            </div>
+                            <div class="toggle-wrapper">
+                                <input type="checkbox" id="pol-1" class="toggle-checkbox"/>
+                                <label for="pol-1" class="toggle-label"></label>
+                            </div>
+                        </div>
+                         <div class="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                            <div>
+                                <span class="text-sm font-bold text-slate-800">Block logins from new countries</span>
+                                <p class="text-xs text-slate-500 mt-0.5">Geo-fencing based on IP history.</p>
+                            </div>
+                            <div class="toggle-wrapper">
+                                <input type="checkbox" checked id="pol-2" class="toggle-checkbox"/>
+                                <label for="pol-2" class="toggle-label"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- ================= TAB: BREACH MONITOR ================= -->
+                 <div id="tab-monitor" class="tab-content">
+                    <div class="flex justify-between items-end mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-900">Breach Monitor</h1>
+                            <p class="text-slate-500 text-sm mt-1">Deep scanning for your credentials on the dark web.</p>
+                        </div>
+                        <div class="flex gap-2">
+                             <span class="px-4 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold flex items-center gap-2 border border-indigo-100">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span> Auto-Scan: Weekly
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-3 gap-4 mb-6">
+                         <div class="bg-white p-5 rounded-2xl border border-slate-200 text-center shadow-sm">
+                             <div class="text-slate-500 text-xs uppercase font-bold mb-2">Email Check</div>
+                             <div class="text-green-600 font-bold flex justify-center items-center gap-2 text-lg"><i data-lucide="check-circle" class="w-5 h-5"></i> Safe</div>
+                         </div>
+                         <div class="bg-white p-5 rounded-2xl border border-slate-200 text-center shadow-sm">
+                             <div class="text-slate-500 text-xs uppercase font-bold mb-2">Password Check</div>
+                             <div class="text-green-600 font-bold flex justify-center items-center gap-2 text-lg"><i data-lucide="check-circle" class="w-5 h-5"></i> No Hashes</div>
+                         </div>
+                         <div class="bg-white p-5 rounded-2xl border border-slate-200 text-center shadow-sm">
+                             <div class="text-slate-500 text-xs uppercase font-bold mb-2">Username Check</div>
+                             <div class="text-green-600 font-bold flex justify-center items-center gap-2 text-lg"><i data-lucide="check-circle" class="w-5 h-5"></i> Safe</div>
+                         </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex flex-col items-center justify-center min-h-[250px] text-center">
+                        <div class="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4 ring-8 ring-green-50/50">
+                            <i data-lucide="shield" class="w-8 h-8 text-green-600"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-slate-900">No Breaches Found</h2>
+                        <p class="text-slate-500 text-sm mt-2 max-w-sm mb-8 leading-relaxed">
+                            We searched 15 billion records and found no trace of <strong>alex.m@gmail.com</strong>.
+                        </p>
+                        <div class="flex flex-col sm:flex-row gap-4 w-full max-w-lg">
+                             <div class="flex-1 bg-slate-50 p-4 rounded-xl flex justify-between items-center border border-slate-100">
+                                 <span class="text-sm font-bold text-slate-700">Scan Weekly</span>
+                                 <div class="toggle-wrapper">
+                                    <input type="checkbox" checked id="bm-1" class="toggle-checkbox"/>
+                                    <label for="bm-1" class="toggle-label"></label>
+                                </div>
+                             </div>
+                             <div class="flex-1 bg-slate-50 p-4 rounded-xl flex justify-between items-center border border-slate-100">
+                                 <span class="text-sm font-bold text-slate-700">Notify on new breach</span>
+                                 <div class="toggle-wrapper">
+                                    <input type="checkbox" checked id="bm-2" class="toggle-checkbox"/>
+                                    <label for="bm-2" class="toggle-label"></label>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: ACTIVITY LOGS ================= -->
+                <div id="tab-activity" class="tab-content">
+                    <div class="flex justify-between items-end mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-900">Activity Logs</h1>
+                            <p class="text-slate-500 text-sm mt-1">Audit trail of all actions.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+                                <span class="text-xs font-bold text-slate-600">Log failed attempts</span>
+                                <input type="checkbox" checked class="accent-indigo-600 w-4 h-4">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-slate-500">Event</th>
+                                    <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-slate-500">Location</th>
+                                    <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-slate-500">Time</th>
+                                    <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-slate-500 text-right">Risk</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 font-medium text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="log-in" class="w-4 h-4 text-indigo-500"></i> Successful Login
+                                    </td>
+                                    <td class="px-6 py-4">New York, US (Current)</td>
+                                    <td class="px-6 py-4">2 mins ago</td>
+                                    <td class="px-6 py-4 text-right"><span class="px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">Low</span></td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 font-medium text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="eye" class="w-4 h-4 text-indigo-500"></i> File Accessed: tax_returns.pdf
+                                    </td>
+                                    <td class="px-6 py-4">New York, US</td>
+                                    <td class="px-6 py-4">10 mins ago</td>
+                                    <td class="px-6 py-4 text-right"><span class="px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">Low</span></td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 font-medium text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="alert-circle" class="w-4 h-4 text-orange-500"></i> Failed Login Attempt
+                                    </td>
+                                    <td class="px-6 py-4">London, UK</td>
+                                    <td class="px-6 py-4">2 days ago</td>
+                                    <td class="px-6 py-4 text-right"><span class="px-2.5 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold">Medium</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: RECOVERY ================= -->
+                <div id="tab-recovery" class="tab-content">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-6">Recovery & Backup</h1>
+
+                    <!-- Status -->
+                    <div class="bg-yellow-50 border border-yellow-200 p-6 rounded-2xl mb-6 flex items-start gap-4">
+                        <div class="p-2 bg-yellow-100 rounded-lg shrink-0">
+                            <i data-lucide="alert-triangle" class="w-6 h-6 text-yellow-700"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-yellow-900 text-lg">Recovery Key Not Backed Up</h3>
+                            <p class="text-sm text-yellow-800 mt-1 leading-relaxed">
+                                Your recovery key is the <strong>only</strong> way to regain access if you forget your password. Because we don't store your password, we cannot reset it for you without this key.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="grid md:grid-cols-3 gap-4 mb-8">
+                        <button class="flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 hover:shadow-md transition-all group">
+                            <div class="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                <i data-lucide="eye" class="w-6 h-6 text-indigo-600"></i>
+                            </div>
+                            <span class="font-bold text-slate-900 text-sm">View Recovery Key</span>
+                            <span class="text-xs text-slate-500 mt-1">Requires password</span>
+                        </button>
+                        <button class="flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 hover:shadow-md transition-all group">
+                            <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                <i data-lucide="download" class="w-6 h-6 text-teal-600"></i>
+                            </div>
+                            <span class="font-bold text-slate-900 text-sm">Download Backup</span>
+                            <span class="text-xs text-slate-500 mt-1">Encrypted JSON file</span>
+                        </button>
+                        <button class="flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-2xl hover:border-rose-300 hover:shadow-md transition-all group">
+                            <div class="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                <i data-lucide="refresh-cw" class="w-6 h-6 text-rose-600"></i>
+                            </div>
+                            <span class="font-bold text-rose-700 text-sm">Regenerate Key</span>
+                            <span class="text-xs text-rose-500 mt-1">Invalidates old keys</span>
+                        </button>
+                    </div>
+
+                    <!-- Policies -->
+                    <h3 class="text-lg font-bold text-slate-900 mb-4">Recovery Policies</h3>
+                    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden divide-y divide-slate-100 shadow-sm mb-8">
+                        <div class="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                            <div>
+                                <span class="text-sm font-bold text-slate-800">Require recovery key to reset password</span>
+                                <p class="text-xs text-slate-500 mt-0.5">Strict mode: Prevents support-based resets.</p>
+                            </div>
+                            <div class="toggle-wrapper">
+                                <input type="checkbox" checked id="rec-1" class="toggle-checkbox"/>
+                                <label for="rec-1" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                            <div>
+                                <span class="text-sm font-bold text-slate-800">Invalidate old keys automatically</span>
+                                <p class="text-xs text-slate-500 mt-0.5">When a new key is generated, old ones stop working.</p>
+                            </div>
+                            <div class="toggle-wrapper">
+                                <input type="checkbox" checked id="rec-2" class="toggle-checkbox"/>
+                                <label for="rec-2" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                            <div>
+                                <span class="text-sm font-bold text-slate-800">Notify on recovery attempt</span>
+                                <p class="text-xs text-slate-500 mt-0.5">Send email immediately if recovery flow starts.</p>
+                            </div>
+                            <div class="toggle-wrapper">
+                                <input type="checkbox" checked id="rec-3" class="toggle-checkbox"/>
+                                <label for="rec-3" class="toggle-label"></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Emergency Access -->
+                    <div class="bg-slate-50 rounded-2xl border border-slate-200 p-6 opacity-75">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                    <i data-lucide="users" class="w-5 h-5 text-indigo-600"></i> Emergency Access
+                                    <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] uppercase font-bold rounded-full">Coming Soon</span>
+                                </h3>
+                                <p class="text-sm text-slate-500 mt-1">Designate a trusted contact who can access your vault after a waiting period.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 border-dashed">
+                            <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
+                                <i data-lucide="user-plus" class="w-5 h-5"></i>
+                            </div>
+                            <span class="text-sm font-medium text-slate-400">No trusted contacts added</span>
+                            <button class="ml-auto text-xs bg-slate-200 text-slate-500 px-4 py-2 rounded-lg font-bold cursor-not-allowed">Add Contact</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: DEVICES ================= -->
+                <div id="tab-devices" class="tab-content">
+                    <div class="flex justify-between items-end mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-900">Devices & Sessions</h1>
+                            <p class="text-slate-500 text-sm mt-1">Manage where your account is logged in.</p>
+                        </div>
+                        <button class="text-rose-600 font-bold text-sm hover:underline hover:text-rose-700 transition-colors">Log Out All Other Sessions</button>
+                    </div>
+
+                    <!-- Active Sessions List -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+                        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-900 text-sm uppercase tracking-wide">Active Sessions</h3>
+                            <span class="text-xs text-slate-500">2 active devices</span>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                            <!-- Current Session -->
+                            <div class="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-indigo-50/30">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-600 shadow-sm">
+                                        <i data-lucide="laptop" class="w-6 h-6"></i>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-sm font-bold text-slate-900">MacBook Pro</span>
+                                            <span class="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wide border border-green-200">Current</span>
+                                        </div>
+                                        <p class="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                                            <i data-lucide="globe" class="w-3 h-3"></i> Chrome on macOS • New York, US
+                                        </p>
+                                        <p class="text-[10px] text-slate-400 mt-0.5">IP: 192.168.1.42 • Started 3 days ago</p>
+                                    </div>
+                                </div>
+                                <div class="text-right flex flex-col items-end justify-center">
+                                    <span class="text-xs text-green-600 font-bold flex items-center gap-1.5">
+                                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Active Now
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- Other Session -->
+                            <div class="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
+                                        <i data-lucide="smartphone" class="w-6 h-6"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm font-bold text-slate-900">iPhone 14 Pro</span>
+                                        <p class="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                                            <i data-lucide="globe" class="w-3 h-3"></i> Safari on iOS • London, UK
+                                        </p>
+                                        <p class="text-[10px] text-slate-400 mt-0.5">Last active: 2 hours ago</p>
+                                    </div>
+                                </div>
+                                <button class="text-xs font-bold text-rose-600 border border-rose-200 bg-rose-50 px-4 py-2 rounded-lg hover:bg-rose-100 hover:border-rose-300 transition-all shadow-sm">
+                                    Log Out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid lg:grid-cols-2 gap-6 mb-6">
+                        <!-- Session Security -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="font-bold text-slate-900 mb-5 flex items-center gap-2">
+                                <i data-lucide="shield" class="w-5 h-5 text-indigo-600"></i> Session Security
+                            </h3>
+                            <div class="space-y-6">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <span class="text-sm font-bold text-slate-800 block">Logout on IP change</span>
+                                        <span class="text-xs text-slate-500">Terminate session if IP address rotates</span>
+                                    </div>
+                                    <div class="toggle-wrapper">
+                                        <input type="checkbox" id="sess-1" class="toggle-checkbox"/>
+                                        <label for="sess-1" class="toggle-label"></label>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <span class="text-sm font-bold text-slate-800 block">Logout on country change</span>
+                                        <span class="text-xs text-slate-500">Geo-fencing protection against theft</span>
+                                    </div>
+                                    <div class="toggle-wrapper">
+                                        <input type="checkbox" checked id="sess-2" class="toggle-checkbox"/>
+                                        <label for="sess-2" class="toggle-label"></label>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <span class="text-sm font-bold text-slate-800 block">Require re-auth on new device</span>
+                                        <span class="text-xs text-slate-500">Email verification for unknown hardware</span>
+                                    </div>
+                                    <div class="toggle-wrapper">
+                                        <input type="checkbox" checked id="sess-3" class="toggle-checkbox"/>
+                                        <label for="sess-3" class="toggle-label"></label>
+                                    </div>
+                                </div>
+                                <div class="pt-5 border-t border-slate-100">
+                                    <label class="text-xs font-bold text-slate-700 block mb-2 uppercase tracking-wide">Auto logout inactivity timeout</label>
+                                    <select class="w-full bg-slate-50 border border-slate-200 text-sm rounded-xl p-2.5 font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                                        <option>15 Minutes</option>
+                                        <option selected>30 Minutes</option>
+                                        <option>1 Hour</option>
+                                        <option>4 Hours</option>
+                                        <option>24 Hours</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <!-- Recent Device Alerts -->
+                            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                                <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                    <i data-lucide="bell" class="w-5 h-5 text-orange-500"></i> Recent Device Alerts
+                                </h3>
+                                <div class="space-y-3">
+                                    <div class="flex items-start gap-3 p-3 bg-orange-50 rounded-xl border border-orange-100">
+                                        <div class="mt-0.5"><i data-lucide="alert-triangle" class="w-4 h-4 text-orange-600"></i></div>
+                                        <div>
+                                            <p class="text-sm font-bold text-orange-900">Suspicious device blocked</p>
+                                            <p class="text-xs text-orange-700 mt-0.5">Linux Device • Russia (VPN) • 3:42 AM</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                                        <div class="mt-0.5"><i data-lucide="info" class="w-4 h-4 text-blue-600"></i></div>
+                                        <div>
+                                            <p class="text-sm font-bold text-blue-900">New device logged in</p>
+                                            <p class="text-xs text-blue-700 mt-0.5">iPhone 14 Pro • London, UK • Yesterday</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Trusted Devices -->
+                            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                                <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                    <i data-lucide="award" class="w-5 h-5 text-teal-600"></i> Trusted Devices
+                                </h3>
+                                <p class="text-xs text-slate-500 mb-4">Trusted devices can bypass 2FA for 30 days.</p>
+                                
+                                <div class="space-y-2 mb-4">
+                                    <div class="flex items-center justify-between p-3 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
+                                        <div class="flex items-center gap-3">
+                                            <div class="bg-slate-100 p-1.5 rounded-lg"><i data-lucide="monitor" class="w-4 h-4 text-slate-500"></i></div>
+                                            <div>
+                                                <span class="text-sm font-bold text-slate-700 block">Home Desktop</span>
+                                                <span class="text-[10px] text-slate-400">Last active: 1 day ago</span>
+                                            </div>
+                                        </div>
+                                        <button class="text-slate-400 hover:text-rose-600 transition-colors p-2 rounded-lg hover:bg-rose-50" title="Remove Trust">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button class="w-full py-2.5 text-xs font-bold text-indigo-600 border border-dashed border-indigo-200 bg-indigo-50 rounded-xl hover:bg-indigo-100 hover:border-indigo-300 transition-all flex items-center justify-center gap-2">
+                                    <i data-lucide="plus" class="w-3 h-3"></i> Mark current device as trusted
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: DATA CONTROLS ================= -->
+                <div id="tab-data" class="tab-content">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-6">Data Controls</h1>
+
+                    <!-- Export -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                        <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <i data-lucide="download-cloud" class="w-5 h-5 text-indigo-600"></i> Data Export & Portability
+                        </h3>
+                        <p class="text-sm text-slate-500 mb-6">Download a copy of your data. Exports are encrypted with your public key and can only be decrypted using your private key.</p>
+                        <div class="flex flex-wrap gap-4">
+                            <button class="px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-bold rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-100">
+                                Export All Data
+                            </button>
+                            <button class="px-4 py-2 bg-white text-slate-700 text-sm font-bold rounded-lg hover:bg-slate-50 transition-colors border border-slate-200">
+                                Download Activity Logs
+                            </button>
+                            <button class="px-4 py-2 bg-white text-slate-700 text-sm font-bold rounded-lg hover:bg-slate-50 transition-colors border border-slate-200">
+                                Download Account Metadata
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Retention -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                        <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <i data-lucide="clock" class="w-5 h-5 text-teal-600"></i> Retention Rules
+                        </h3>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 block mb-2">Retain Activity Logs</label>
+                                <select class="w-full bg-slate-50 border border-slate-200 text-sm rounded-lg p-2.5 font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+                                    <option>7 Days</option>
+                                    <option selected>30 Days</option>
+                                    <option>90 Days</option>
+                                    <option>1 Year</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 block mb-2">After Account Deletion</label>
+                                <select class="w-full bg-slate-50 border border-slate-200 text-sm rounded-lg p-2.5 font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+                                    <option>Delete Immediately</option>
+                                    <option selected>Retain for 7 Day Grace Period</option>
+                                    <option>Retain Encrypted Backups (30 Days)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Privacy Visibility -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                        <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <i data-lucide="eye-off" class="w-5 h-5 text-slate-600"></i> Data Visibility
+                        </h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-sm font-bold text-slate-800">Anonymize IP addresses in logs</span>
+                                    <p class="text-xs text-slate-500">Store only country/region instead of full IP.</p>
+                                </div>
+                                <div class="toggle-wrapper">
+                                    <input type="checkbox" id="data-1" class="toggle-checkbox"/>
+                                    <label for="data-1" class="toggle-label"></label>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-sm font-bold text-slate-800">Disable metadata collection</span>
+                                    <p class="text-xs text-slate-500">Stop collecting file types and size stats.</p>
+                                </div>
+                                <div class="toggle-wrapper">
+                                    <input type="checkbox" id="data-2" class="toggle-checkbox"/>
+                                    <label for="data-2" class="toggle-label"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Deletion Policy -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-slate-900 mb-2">Account Deletion Policy</h3>
+                        <div class="bg-slate-50 p-4 rounded-xl text-sm text-slate-600 mb-4 leading-relaxed">
+                            <p>When you schedule account deletion, your data enters a <strong>7-day grace period</strong>. During this time, you can cancel the request. After 7 days, your account and all encrypted data are permanently wiped from our servers.</p>
+                        </div>
+                        <button class="text-rose-600 font-bold text-sm hover:underline flex items-center gap-2">
+                            Schedule Account Deletion <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: CONNECTIONS ================= -->
+                <div id="tab-connections" class="tab-content">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-6">App Connections</h1>
+                    <p class="text-slate-500 text-sm mb-6">Manage third-party applications and API access.</p>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+                        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-900 text-sm uppercase tracking-wide">Connected Apps</h3>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                            <div class="p-5 flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
+                                        <i data-lucide="box" class="w-6 h-6"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Google Drive Integration</h4>
+                                        <p class="text-xs text-slate-500">Auto-backup encrypted blobs.</p>
+                                    </div>
+                                </div>
+                                <button class="text-xs font-bold text-rose-600 border border-rose-200 bg-rose-50 px-3 py-1.5 rounded-lg hover:bg-rose-100 transition-colors">Revoke</button>
+                            </div>
+                            <div class="p-5 flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-green-600">
+                                        <i data-lucide="message-square" class="w-6 h-6"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Slack Notifications</h4>
+                                        <p class="text-xs text-slate-500">Alerts for login events.</p>
+                                    </div>
+                                </div>
+                                <button class="text-xs font-bold text-rose-600 border border-rose-200 bg-rose-50 px-3 py-1.5 rounded-lg hover:bg-rose-100 transition-colors">Revoke</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-slate-900 mb-4">API Access</h3>
+                        <p class="text-sm text-slate-500 mb-4">Generate personal access tokens for the SyncVeil CLI.</p>
+                        <button class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition-colors">Generate New Token</button>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: BILLING ================= -->
+                <div id="tab-billing" class="tab-content">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-6">Billing & Plan</h1>
+
+                    <div class="grid md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                            <div class="relative z-10">
+                                <span class="px-2 py-1 bg-white/20 text-white text-[10px] uppercase font-bold rounded-full mb-3 inline-block">Current Plan</span>
+                                <h2 class="text-3xl font-extrabold mb-1">Pro Plan</h2>
+                                <p class="text-indigo-100 text-sm mb-6">$12 / month</p>
+                                <button class="px-4 py-2 bg-white text-indigo-700 text-sm font-bold rounded-lg hover:bg-indigo-50 transition-colors">Manage Subscription</button>
+                            </div>
+                            <i data-lucide="credit-card" class="absolute right-4 bottom-4 w-32 h-32 text-indigo-500/30 -rotate-12"></i>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="font-bold text-slate-900 mb-4">Storage Usage</h3>
+                            <div class="flex items-end gap-2 mb-2">
+                                <span class="text-2xl font-bold text-slate-900">2.4 GB</span>
+                                <span class="text-sm text-slate-500 mb-1">/ 15 GB</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-4">
+                                <div class="bg-indigo-500 h-full rounded-full w-[16%]"></div>
+                            </div>
+                            <p class="text-xs text-slate-500">You have plenty of space left.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                            <h3 class="font-bold text-slate-900 text-sm uppercase tracking-wide">Invoice History</h3>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                            <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-slate-100 rounded-lg"><i data-lucide="file-text" class="w-4 h-4 text-slate-500"></i></div>
+                                    <div>
+                                        <p class="text-sm font-bold text-slate-900">Invoice #1024</p>
+                                        <p class="text-xs text-slate-500">Oct 01, 2025</p>
+                                    </div>
+                                </div>
+                                <span class="text-sm font-bold text-slate-700">$12.00</span>
+                                <button class="text-indigo-600 text-xs font-bold hover:underline">Download</button>
+                            </div>
+                            <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-slate-100 rounded-lg"><i data-lucide="file-text" class="w-4 h-4 text-slate-500"></i></div>
+                                    <div>
+                                        <p class="text-sm font-bold text-slate-900">Invoice #1023</p>
+                                        <p class="text-xs text-slate-500">Sep 01, 2025</p>
+                                    </div>
+                                </div>
+                                <span class="text-sm font-bold text-slate-700">$12.00</span>
+                                <button class="text-indigo-600 text-xs font-bold hover:underline">Download</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: TRANSPARENCY ================= -->
+                <div id="tab-transparency" class="tab-content">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-6">Transparency Report</h1>
+                    
+                    <!-- Compliance Badges (NEW) -->
+                    <div class="flex flex-wrap gap-4 mb-8">
+                        <div class="bg-white border border-slate-200 px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm">
+                            <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-[10px] font-bold text-blue-700">G</div>
+                            <span class="text-sm font-bold text-slate-700">GDPR Compliant</span>
+                        </div>
+                        <div class="bg-white border border-slate-200 px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm">
+                            <div class="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center text-[10px] font-bold text-teal-700">S</div>
+                            <span class="text-sm font-bold text-slate-700">SOC 2 Type II</span>
+                        </div>
+                        <div class="bg-white border border-slate-200 px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm">
+                            <div class="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-[10px] font-bold text-purple-700">I</div>
+                            <span class="text-sm font-bold text-slate-700">ISO 27001</span>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2 text-lg"><i data-lucide="eye" class="w-5 h-5 text-green-600"></i> What We Can See</h3>
+                            <ul class="space-y-3 text-sm text-slate-600">
+                                <li class="flex items-center gap-3"><div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0"><i data-lucide="check" class="w-3 h-3 text-green-600"></i></div> Your Email Address (for auth)</li>
+                                <li class="flex items-center gap-3"><div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0"><i data-lucide="check" class="w-3 h-3 text-green-600"></i></div> Encrypted Binary Blobs (file size only)</li>
+                                <li class="flex items-center gap-3"><div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0"><i data-lucide="check" class="w-3 h-3 text-green-600"></i></div> Account Metadata (created date, plan)</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2 text-lg"><i data-lucide="eye-off" class="w-5 h-5 text-rose-600"></i> What We CANNOT See</h3>
+                            <ul class="space-y-3 text-sm text-slate-600">
+                                <li class="flex items-center gap-3"><div class="w-5 h-5 rounded-full bg-rose-100 flex items-center justify-center shrink-0"><i data-lucide="x" class="w-3 h-3 text-rose-600"></i></div> Your Password (hashed only)</li>
+                                <li class="flex items-center gap-3"><div class="w-5 h-5 rounded-full bg-rose-100 flex items-center justify-center shrink-0"><i data-lucide="x" class="w-3 h-3 text-rose-600"></i></div> File Contents (Zero-Knowledge)</li>
+                                <li class="flex items-center gap-3"><div class="w-5 h-5 rounded-full bg-rose-100 flex items-center justify-center shrink-0"><i data-lucide="x" class="w-3 h-3 text-rose-600"></i></div> File Names (Encrypted locally)</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 mb-6 shadow-sm">
+                        <h3 class="font-bold text-slate-900 mb-3">Encryption Model Summary</h3>
+                        <p class="text-sm text-slate-600 leading-relaxed">
+                            SyncVeil uses <strong>AES-256-GCM</strong> for file encryption and <strong>RSA-4096</strong> for key sharing. Your master password derives the encryption key using <strong>PBKDF2</strong> with 100,000 iterations locally on your device before any data is transmitted.
+                        </p>
+                    </div>
+
+                    <div class="p-5 flex items-center justify-between bg-slate-50 rounded-2xl border border-slate-200">
+                        <div>
+                            <span class="text-sm font-bold text-slate-800">Share Anonymous Diagnostics</span>
+                            <p class="text-xs text-slate-500 mt-0.5">Help us improve by sharing crash reports.</p>
+                        </div>
+                        <div class="toggle-wrapper">
+                            <input type="checkbox" id="diag-toggle" class="toggle-checkbox"/>
+                            <label for="diag-toggle" class="toggle-label"></label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: SETTINGS (Updated) ================= -->
+                <div id="tab-settings" class="tab-content">
+                    <div class="flex justify-between items-end mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-900">Settings</h1>
+                            <p class="text-slate-500 text-sm mt-1">Configure your privacy and security preferences.</p>
+                        </div>
+                        <button class="px-5 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-indigo-600 transition-colors shadow-lg">Save</button>
+                    </div>
+
+                    <!-- Personal Profile (Collapsed view or Summary) -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 mb-6 shadow-sm">
+                        <h2 class="text-lg font-bold text-slate-900 mb-4">Profile</h2>
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div><label class="text-xs font-bold text-slate-700">Name</label><input type="text" value="Alex Morgan" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></div>
+                            <div><label class="text-xs font-bold text-slate-700">Email</label><input type="email" value="alex.m@gmail.com" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></div>
+                        </div>
+                    </div>
+
+                    <!-- Authentication & Security Toggles -->
+                    <div class="grid md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wide mb-4 flex items-center gap-2 text-indigo-600"><i data-lucide="key" class="w-4 h-4"></i> Authentication</h2>
+                            <div class="space-y-6">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm font-medium text-slate-700">Enable 2FA</span>
+                                    <div class="toggle-wrapper">
+                                        <input type="checkbox" id="auth-1" class="toggle-checkbox"/>
+                                        <label for="auth-1" class="toggle-label"></label>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm font-medium text-slate-700">Require Password for Deletes</span>
+                                    <div class="toggle-wrapper">
+                                        <input type="checkbox" checked id="auth-2" class="toggle-checkbox"/>
+                                        <label for="auth-2" class="toggle-label"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wide mb-4 flex items-center gap-2 text-teal-600"><i data-lucide="eye-off" class="w-4 h-4"></i> Privacy UX</h2>
+                            <div class="space-y-6">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm font-medium text-slate-700">Hide File Names</span>
+                                    <div class="toggle-wrapper">
+                                        <input type="checkbox" id="priv-1" class="toggle-checkbox"/>
+                                        <label for="priv-1" class="toggle-label"></label>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm font-medium text-slate-700">Blur Vault Preview</span>
+                                    <div class="toggle-wrapper">
+                                        <input type="checkbox" checked id="priv-2" class="toggle-checkbox"/>
+                                        <label for="priv-2" class="toggle-label"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 mb-6 shadow-sm">
+                        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-4">Advanced</h2>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center border-b border-slate-50 pb-4">
+                                <div>
+                                    <span class="text-sm font-bold text-slate-800">Auto-Lock Vault</span>
+                                    <p class="text-xs text-slate-500">Lock interface after inactivity</p>
+                                </div>
+                                <select class="bg-slate-50 border border-slate-200 text-xs rounded-lg p-2 font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+                                    <option>Never</option>
+                                    <option>5 Minutes</option>
+                                    <option selected>15 Minutes</option>
+                                    <option>1 Hour</option>
+                                </select>
+                            </div>
+                            <div class="flex justify-between items-center pt-2">
+                                <div>
+                                    <span class="text-sm font-bold text-slate-800">Encryption Algorithm</span>
+                                    <p class="text-xs text-slate-500">Select cipher for new files</p>
+                                </div>
+                                <select class="bg-slate-50 border border-slate-200 text-xs rounded-lg p-2 font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+                                    <option selected>AES-256-GCM</option>
+                                    <option>ChaCha20-Poly1305</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                     <!-- Danger Zone -->
+                     <div class="bg-rose-50 rounded-2xl border border-rose-100 p-6">
+                        <h2 class="text-lg font-bold text-rose-900">Danger Zone</h2>
+                        <div class="flex justify-between items-center mt-2">
+                             <p class="text-sm text-rose-800">Permanently delete your account and all encrypted data.</p>
+                             <button class="px-4 py-2 bg-white border border-rose-200 text-rose-600 text-sm font-bold rounded-lg hover:bg-rose-600 hover:text-white transition-colors">Delete</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: HELP & SUPPORT ================= -->
+                <div id="tab-help" class="tab-content">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-6">Help & Support</h1>
+
+                    <div class="grid md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <i data-lucide="book-open" class="w-5 h-5 text-indigo-600"></i> Documentation
+                            </h3>
+                            <ul class="space-y-3">
+                                <li><a href="#" class="text-sm text-indigo-600 hover:underline flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4"></i> Getting Started Guide</a></li>
+                                <li><a href="#" class="text-sm text-indigo-600 hover:underline flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4"></i> Encryption Technical Whitepaper</a></li>
+                                <li><a href="#" class="text-sm text-indigo-600 hover:underline flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4"></i> Troubleshooting 2FA</a></li>
+                            </ul>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <i data-lucide="message-circle" class="w-5 h-5 text-indigo-600"></i> Contact Support
+                            </h3>
+                            <textarea class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm mb-4 focus:ring-2 focus:ring-indigo-500 outline-none" rows="3" placeholder="Describe your issue..."></textarea>
+                            <button class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition-colors w-full">Send Message</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
+                                <i data-lucide="keyboard" class="w-5 h-5 text-slate-600"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-900 text-sm">Keyboard Shortcuts</h4>
+                                <p class="text-xs text-slate-500">Speed up your workflow.</p>
+                            </div>
+                        </div>
+                        <button onclick="toggleShortcuts()" class="text-indigo-600 text-sm font-bold hover:underline">View Shortcuts</button>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <span class="text-sm font-bold text-slate-700">System Status</span>
+                        <span class="flex items-center gap-2 text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> All Systems Operational
+                        </span>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                // Open
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                // Close
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function toggleShortcuts() {
+            const modal = document.getElementById('shortcuts-modal');
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            } else {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function switchTab(tabId) {
+            // 1. Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // 2. Show target tab content
+            const target = document.getElementById('tab-' + tabId);
+            if (target) {
+                target.classList.add('active');
+            }
+
+            // 3. Update Sidebar Active State
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.classList.remove('active', 'bg-indigo-50', 'text-indigo-700');
+                link.classList.add('text-slate-600');
+                
+                const icon = link.querySelector('i');
+                if(icon) {
+                    icon.classList.remove('text-indigo-700');
+                }
+            });
+
+            const activeLink = document.getElementById('nav-' + tabId);
+            if (activeLink) {
+                activeLink.classList.add('active', 'bg-indigo-50', 'text-indigo-700');
+                activeLink.classList.remove('text-slate-600');
+            }
+
+            // Close sidebar on mobile after clicking
+            if (window.innerWidth < 768) {
+                toggleSidebar();
+            }
+        }
+
+        // Global Shortcut Listeners
+        document.addEventListener('keydown', (e) => {
+            // Cmd/Ctrl + K for Search focus
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                document.querySelector('input[type="text"]').focus();
+            }
+            // Escape to close modals
+            if (e.key === 'Escape') {
+                document.getElementById('shortcuts-modal').classList.add('hidden');
+                document.getElementById('shortcuts-modal').classList.remove('flex');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Get Started – SyncVeil</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="https://cdn.jsdelivr.net/npm/lucide-static@0.344.0/icons/shield.svg" type="image/svg+xml">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: white;
+            color: #0f172a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .view-center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        /* Animations */
+        .animate-fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hidden-view {
+            display: none !important;
+        }
+        
+        .org-name {
+            font-family: 'Rubik Mono One', cursive;
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden relative">
+
+    <!-- Global Header -->
+    <header class="border-b bg-white">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center">
+            <a href="./app.html" class="text-2xl font-bold org-name">SyncVeil</a>
+        </div>
+    </header>
+
+    <!-- Background Elements -->
+    <div class="fixed top-0 right-0 -z-10 w-1/2 h-full bg-gradient-to-bl from-indigo-50 via-teal-50 to-white opacity-60 rounded-bl-[100px] pointer-events-none"></div>
+    <div class="fixed bottom-0 left-0 -z-10 w-96 h-96 bg-rose-50 rounded-full blur-3xl opacity-50 translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
+
+    <!-- Main Container -->
+    <div class="view-center">
+        
+        <!-- VIEW 1: AUTH CHOICE -->
+        <div id="view-choice" class="max-w-sm w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-8 animate-fade-in-up relative">
+            <div class="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <i data-lucide="shield" class="w-6 h-6 text-white"></i>
+            </div>
+            
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-extrabold text-slate-900">Get Started</h2>
+                <p class="text-slate-500 text-sm mt-1">Secure your digital life today.</p>
+            </div>
+
+            <div class="space-y-3">
+                <button onclick="switchView('signup')" class="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 flex items-center justify-center gap-2 text-sm">
+                    Create New Account <i data-lucide="user-plus" class="w-4 h-4"></i>
+                </button>
+
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink-0 mx-3 text-slate-400 text-xs font-medium">or</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <button onclick="switchView('login')" class="w-full py-3 bg-white text-slate-700 border border-slate-200 rounded-lg font-bold hover:border-indigo-200 hover:bg-slate-50 transition-all duration-300 flex items-center justify-center gap-2 text-sm">
+                    Log In <i data-lucide="log-in" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <p class="mt-6 text-center text-[10px] text-slate-400">
+                By continuing, you agree to our <a href="terms-of-service.html" class="text-indigo-600 hover:underline">Terms</a> and <a href="privacy-policy.html" class="text-indigo-600 hover:underline">Privacy Policy</a>.
+            </p>
+        </div>
+
+        <!-- VIEW 2: LOGIN -->
+        <div id="view-login" class="max-w-sm w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hidden-view relative">
+            <button onclick="switchView('choice')" class="absolute top-4 left-4 text-slate-400 hover:text-indigo-600 transition-colors">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <div class="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="log-in" class="w-5 h-5 text-teal-600"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900">Welcome Back</h2>
+                <p class="text-slate-500 text-xs mt-1">Enter your credentials to access.</p>
+            </div>
+
+            <form onsubmit="handleSubmit(event, 'Logging in...')" class="space-y-4">
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-700">Email</label>
+                    <div class="relative">
+                        <input type="email" placeholder="you@company.com" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" required>
+                        <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-700">Password</label>
+                    <div class="relative">
+                        <input type="password" placeholder="••••••••" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" required>
+                        <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center text-xs">
+                    <label class="flex items-center text-slate-600 cursor-pointer">
+                        <input type="checkbox" class="mr-2 rounded text-indigo-600 focus:ring-indigo-500"> Remember me
+                    </label>
+                    <a href="#" class="text-indigo-600 font-bold hover:underline">Forgot?</a>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-slate-900 text-white rounded-lg font-bold hover:bg-indigo-600 shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 text-sm">Log In</button>
+            </form>
+
+            <p class="text-center mt-6 text-xs text-slate-600">
+                No account? <button onclick="switchView('signup')" class="text-indigo-600 font-bold hover:underline">Sign up</button>
+            </p>
+        </div>
+
+        <!-- VIEW 3: SIGNUP -->
+        <div id="view-signup" class="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-8 hidden-view relative">
+            <button onclick="switchView('choice')" class="absolute top-4 left-4 text-slate-400 hover:text-indigo-600 transition-colors">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="user-plus" class="w-5 h-5 text-indigo-600"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900">Create Account</h2>
+                <p class="text-slate-500 text-xs mt-1">Start your 14-day free trial.</p>
+            </div>
+
+            <form onsubmit="handleSubmit(event, 'Creating Account...')" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-700">Full Name</label>
+                        <div class="relative">
+                            <input type="text" placeholder="John Doe" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" required>
+                            <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-700">Mobile</label>
+                        <div class="relative">
+                            <input type="tel" placeholder="+1 (555)..." class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <i data-lucide="phone" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-700">Email</label>
+                    <div class="relative">
+                        <input type="email" placeholder="you@company.com" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" required>
+                        <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-700">Password</label>
+                    <div class="relative">
+                        <input type="password" placeholder="Strong password" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" required>
+                        <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 text-sm">Create Account</button>
+            </form>
+
+            <p class="text-center mt-6 text-xs text-slate-600">
+                Have an account? <button onclick="switchView('login')" class="text-indigo-600 font-bold hover:underline">Log in</button>
+            </p>
+        </div>
+
+    </div>
+
+    <!-- Global Footer -->
+    <footer class="border-t mt-20 bg-white">
+        <div class="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm text-slate-600">
+            <div>© 2025 SyncVeil Inc.</div>
+            <nav class="flex flex-wrap gap-4">
+                <a href="./app.html" class="hover:text-indigo-600">Home</a>
+                <a href="./app.html" class="hover:text-indigo-600">Open App</a>
+                <a href="./privacy-policy.html" class="hover:text-indigo-600">Privacy Policy</a>
+                <a href="./terms-of-service.html" class="hover:text-indigo-600">Terms of Service</a>
+                <a href="./cookie-policy.html" class="hover:text-indigo-600">Cookie Policy</a>
+            </nav>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        lucide.createIcons();
+
+        function switchView(viewName) {
+            // Hide all views
+            document.querySelectorAll('[id^="view-"]').forEach(el => {
+                el.classList.add('hidden-view');
+                el.classList.remove('animate-fade-in-up'); // Reset animation
+            });
+
+            // Show target view
+            const target = document.getElementById('view-' + viewName);
+            if(target) {
+                target.classList.remove('hidden-view');
+                // Trigger reflow to restart animation
+                void target.offsetWidth;
+                target.classList.add('animate-fade-in-up');
+                lucide.createIcons();
+            }
+        }
+
+        function handleSubmit(e, msg) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            
+            btn.innerText = msg;
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+
+            setTimeout(() => {
+                // Mock redirect to dashboard (in a real app, this would be a server redirect or state change)
+                window.location.href = 'dashboard.html'; 
+            }, 1500);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+    <!-- ================= SEO CORE ================= -->
+    <title>SyncVeil – Privacy & Encrypted Data Protection Platform</title>
+    <meta name="description" content="SyncVeil is a privacy-first platform offering encrypted data vaults, secure identity management, and real-time breach monitoring.">
+    <meta name="keywords" content="SyncVeil, data privacy, encrypted vault, secure storage, breach monitoring, identity protection">
+    <meta name="author" content="SyncVeil">
+    <link rel="canonical" href="https://syncveil.software/">
+
+    <!-- ================= OPEN GRAPH ================= -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="SyncVeil – Privacy That Empowers">
+    <meta property="og:description" content="Encrypted data vaults, identity protection, and breach monitoring.">
+    <meta property="og:url" content="https://syncveil.software/">
+    <meta property="og:site_name" content="SyncVeil">
+
+    <!-- ================= TWITTER ================= -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="SyncVeil – Privacy That Empowers">
+    <meta name="twitter:description" content="Privacy-first encrypted data protection platform.">
+
+    <!-- ================= FAVICON ================= -->
+    <link rel="icon" href="https://cdn.jsdelivr.net/npm/lucide-static@0.344.0/icons/shield.svg" type="image/svg+xml">
+
+    <!-- ================= FONTS ================= -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&display=swap" rel="stylesheet">
+
+    <!-- ================= TAILWIND ================= -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- ================= ICONS ================= -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- ================= MAP ================= -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap/dist/css/jsvectormap.min.css" />
+
+    <!-- ================= SCHEMA: ORGANIZATION ================= -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "SyncVeil",
+      "url": "https://syncveil.software/",
+      "logo": "https://syncveil.software/logo.png",
+      "description": "Privacy-first encrypted data protection and identity management platform.",
+      "foundingDate": "2025",
+      "sameAs": [
+        "https://github.com/SyncVeil",
+        "https://www.linkedin.com/company/syncveil"
+      ]
+    }
+    </script>
+
+    <!-- ================= SCHEMA: WEBSITE (BRAND SEARCH) ================= -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "SyncVeil",
+      "url": "https://syncveil.software/",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://syncveil.software/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <!-- ================= SCHEMA: BREADCRUMB ================= -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [{
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://syncveil.software/"
+      }]
+    }
+    </script>
+
+    <!-- ================= STYLES ================= -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- JSVectorMap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap/dist/css/jsvectormap.min.css" />
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS Configuration -->
+    <style>
+        /* --- CSS START --- */
+        :root { --nav-height: 72px; }
+        
+        html, body {
+            height: 100%;
+            margin: 0;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background: white;
+            color: #0f172a;
+        }
+        
+        .org-name {
+            font-family: 'Rubik Mono One', cursive;
+        }
+
+        /* Layout Utilities */
+        main#main-content { flex: 1; }
+        
+        /* View Management */
+        .view-section {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            min-height: calc(100vh - var(--nav-height));
+            box-sizing: border-box;
+        }
+        
+        .view-section.active {
+            display: block;
+            opacity: 1;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        /* Dashboard Specifics - MODIFIED for Sticky Footer */
+        .dashboard-layout {
+            display: flex;
+            min-height: 100vh; /* Changed from height: 100vh to allow body scroll */
+            background-color: #f8fafc; 
+        }
+
+        .dashboard-sidebar {
+            width: 260px;
+            flex-shrink: 0;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 40;
+            /* Added sticky positioning for scrolling layout */
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .dashboard-main {
+            flex: 1;
+            /* Removed overflow-y: auto to allow global scroll */
+            position: relative;
+        }
+
+        /* Animations */
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes float-delayed {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-float-delayed { animation: float-delayed 7s ease-in-out infinite 2s; }
+        .animate-fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
+        .animate-fade-in-right { animation: fadeInRight 0.8s ease-out forwards; }
+        
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInRight {
+          from { opacity: 0; transform: translateX(20px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Typography */
+        .org-name {
+            font-family: 'Rubik Mono One', monospace;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            line-height: 1;
+        }
+
+        /* Chart helpers */
+        .bar-h-40 { height: 40%; }
+        .bar-h-45 { height: 45%; }
+        .bar-h-50 { height: 50%; }
+        .bar-h-60 { height: 60%; }
+        .bar-h-70 { height: 70%; }
+        .bar-h-80 { height: 80%; }
+        .bar-h-90 { height: 90%; }
+
+        /* Map Styling */
+        .jvm-tooltip {
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        #breach-map {
+            width: 100%;
+            height: 500px;
+            background: transparent;
+            min-height: 40vh;
+            max-height: 700px;
+        }
+        .map-gradient-overlay {
+            background: linear-gradient(to top, #f8fafc 10%, transparent 100%);
+        }
+
+        /* Mobile Menu */
+        #mobile-menu {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        #mobile-menu.open { max-height: 400px; opacity: 1; }
+
+        /* Utilities */
+        .view-center {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+
+        /* Dashboard Tab Content Switching */
+        .dash-tab { display: none; }
+        .dash-tab.active { display: block; animation: fadeInUp 0.4s ease-out; }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.2s;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #4f46e5;
+            background-color: #eef2ff;
+        }
+
+        /* --- CSS END --- */
+    </style>
+</head>
+<body class="bg-white text-slate-900 selection:bg-indigo-100 selection:text-indigo-900 overflow-x-hidden">
+
+        <!-- Global Header -->
+        <header class="border-b">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+                <a href="./app.html" class="text-2xl font-bold org-name">SyncVeil</a>
+                <nav class="flex flex-wrap gap-4 text-sm">
+                    <a href="./app.html" class="text-slate-700 hover:text-indigo-600">Home</a>
+                    <a href="./app.html" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold">Open App</a>
+                    <a href="./privacy-policy.html" class="text-slate-700 hover:text-indigo-600">Privacy</a>
+                    <a href="./terms-of-service.html" class="text-slate-700 hover:text-indigo-600">Terms</a>
+                    <a href="./cookie-policy.html" class="text-slate-700 hover:text-indigo-600">Cookies</a>
+                </nav>
+            </div>
+        </header>
+
+    <!-- PUBLIC NAVBAR (Hidden when in Dashboard mode) -->
+    <nav id="public-nav" class="fixed w-full z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-100 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16 md:h-20">
+                <!-- Logo -->
+                <div class="flex items-center gap-2 cursor-pointer group" onclick="switchView('home')">
+                    <span class="text-2xl md:text-3xl org-name text-slate-800">
+                        SyncVeil
+                    </span>
+                </div>
+
+                <!-- Desktop Links -->
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="javascript:void(0)" onclick="switchView('home')" class="text-slate-600 hover:text-indigo-600 font-medium transition-colors text-sm">Product</a>
+                    <a href="javascript:void(0)" onclick="scrollToSection('news-section')" class="text-slate-600 hover:text-indigo-600 font-medium transition-colors text-sm">Breach News</a>
+                    <a href="./auth.html" class="text-slate-600 hover:text-indigo-600 font-bold transition-colors text-sm">Log In</a>
+                    <a href="./auth.html" class="bg-slate-900 text-white px-5 py-2 rounded-full font-medium hover:bg-indigo-600 hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 transform hover:-translate-y-0.5 text-sm">
+                        Get Started
+                    </a>
+                </div>
+
+                <!-- Mobile Menu Icon -->
+                <button class="md:hidden text-slate-700 p-2 hover:bg-slate-100 rounded-lg transition-colors" onclick="toggleMobileMenu()" aria-label="Open menu">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Dropdown -->
+        <div id="mobile-menu" class="md:hidden bg-white border-b border-slate-100">
+            <div class="px-4 pt-2 pb-6 space-y-2">
+                <a href="javascript:void(0)" onclick="switchView('home'); toggleMobileMenu()" class="block px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg">Product</a>
+                <a href="javascript:void(0)" onclick="scrollToSection('news-section'); toggleMobileMenu()" class="block px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg">Breach News</a>
+                <a href="./auth.html" class="block px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg">Log In</a>
+                <a href="./auth.html" class="w-full block text-left px-3 py-2 text-base font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <main id="main-content" class="flex-1">
+
+        <!-- ================= VIEW: HOME (Landing Page) ================= -->
+        <div id="view-home" class="view-section active">
+            <!-- HERO SECTION -->
+            <div class="relative pt-28 pb-16 lg:pt-36 lg:pb-24 overflow-hidden">
+                <!-- Abstract Background Shapes -->
+                <div class="absolute top-0 right-0 -z-10 w-1/2 h-full bg-gradient-to-bl from-indigo-50 via-teal-50 to-white opacity-60 rounded-bl-[100px]"></div>
+                <div class="absolute bottom-0 left-0 -z-10 w-96 h-96 bg-rose-50 rounded-full blur-3xl opacity-50 translate-y-1/2 -translate-x-1/4"></div>
+
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="grid lg:grid-cols-2 gap-12 items-center">
+                        <!-- Text Content -->
+                        <div class="space-y-6 animate-fade-in-up">
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-full shadow-sm text-xs font-semibold text-slate-700">
+                                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                v2.0 is live: Enhanced Encryption
+                            </div>
+
+                            <h1 class="text-4xl lg:text-6xl font-extrabold text-slate-900 leading-[1.1]">
+                                Privacy that <br />
+                                <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-teal-500">
+                                    Empowers.
+                                </span>
+                            </h1>
+
+                            <p class="text-base lg:text-lg text-slate-600 max-w-lg leading-relaxed">
+                                SyncVeil gives you complete control over your digital footprint. Monitor, manage, and secure your startup's data without compromising speed.
+                            </p>
+
+                            <div class="flex flex-col sm:flex-row gap-4 pt-2">
+                                <button onclick="switchView('auth-choice')" class="px-8 py-3.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2">
+                                    Get Started <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                                </button>
+                                <button onclick="scrollToSection('features')" class="px-8 py-3.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:border-indigo-200 hover:bg-indigo-50 transition-all duration-300 flex items-center justify-center gap-2">
+                                    <i data-lucide="search" class="w-5 h-5"></i> View Demo
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Graphical Illustration -->
+                        <div class="relative animate-fade-in-right hidden lg:block">
+                            <div class="relative z-10 bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 transform rotate-[-2deg] hover:rotate-0 transition-all duration-500 max-w-md mx-auto">
+                                <div class="flex items-center justify-between mb-6">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                            <i data-lucide="database" class="w-5 h-5 text-indigo-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-bold text-slate-900 text-sm">Data Vault</h3>
+                                            <p class="text-[10px] text-slate-500">Status: Secured</p>
+                                        </div>
+                                    </div>
+                                    <div class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-bold">Active</div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div class="h-28 bg-slate-50 rounded-2xl border border-slate-100 relative overflow-hidden group">
+                                        <div class="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-indigo-100 to-transparent opacity-50"></div>
+                                        <div class="absolute bottom-0 left-0 right-0 flex items-end justify-between px-4 pb-2 h-full">
+                                            <div class="bar-h-40 w-1.5 bg-indigo-500 rounded-t-sm"></div>
+                                            <div class="bar-h-70 w-1.5 bg-indigo-500 rounded-t-sm"></div>
+                                            <div class="bar-h-45 w-1.5 bg-indigo-500 rounded-t-sm"></div>
+                                            <div class="bar-h-90 w-1.5 bg-indigo-500 rounded-t-sm"></div>
+                                            <div class="bar-h-60 w-1.5 bg-indigo-500 rounded-t-sm"></div>
+                                            <div class="bar-h-80 w-1.5 bg-indigo-500 rounded-t-sm"></div>
+                                            <div class="bar-h-50 w-1.5 bg-indigo-500 rounded-t-sm"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center pt-1">
+                                        <div class="space-y-1">
+                                            <div class="h-1.5 w-20 bg-slate-200 rounded-full"></div>
+                                            <div class="h-1.5 w-12 bg-slate-100 rounded-full"></div>
+                                        </div>
+                                        <div class="h-6 w-16 bg-slate-900 rounded-lg"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="absolute -top-8 -right-8 z-0 bg-white p-3 rounded-2xl shadow-xl border border-slate-100 animate-float">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-rose-100 rounded-lg"><i data-lucide="shield" class="w-4 h-4 text-rose-600"></i></div>
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-800">Threat Blocked</p>
+                                        <p class="text-[9px] text-slate-400">Just now</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="absolute -bottom-4 -left-4 z-20 bg-white p-3 rounded-2xl shadow-xl border border-slate-100 animate-float-delayed">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-teal-100 rounded-lg"><i data-lucide="check-circle" class="w-4 h-4 text-teal-600"></i></div>
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-800">System Optimal</p>
+                                        <p class="text-[9px] text-slate-400">99.9% Uptime</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FEATURES SECTION -->
+            <section id="features" class="py-16 bg-white relative">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center mb-12 max-w-3xl mx-auto">
+                        <h2 class="text-xs font-bold text-indigo-600 tracking-wider uppercase mb-2">Features</h2>
+                        <h3 class="text-2xl md:text-3xl font-extrabold text-slate-900 mb-4">Everything you need to protect your privacy.</h3>
+                        <p class="text-slate-600 text-base">We've simplified complex security protocols into an elegant interface that anyone can use.</p>
+                    </div>
+
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <div class="group p-6 rounded-3xl bg-white border border-slate-100 hover:border-indigo-100 hover:shadow-2xl hover:shadow-indigo-900/5 transition-all duration-500 cursor-pointer">
+                            <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                <i data-lucide="bar-chart-3" class="w-6 h-6 text-indigo-600"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-slate-900 mb-2">Real-time Monitoring</h4>
+                            <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                                Watch your data flows in real-time with our visual dashboard. Spot anomalies before they become breaches.
+                            </p>
+                        </div>
+                        <div class="group p-6 rounded-3xl bg-white border border-slate-100 hover:border-indigo-100 hover:shadow-2xl hover:shadow-indigo-900/5 transition-all duration-500 cursor-pointer">
+                            <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                <i data-lucide="globe" class="w-6 h-6 text-teal-600"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-slate-900 mb-2">GDPR Compliance</h4>
+                            <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                                Automated auditing tools that ensure you meet global privacy standards without the paperwork headache.
+                            </p>
+                        </div>
+                        <div class="group p-6 rounded-3xl bg-white border border-slate-100 hover:border-indigo-100 hover:shadow-2xl hover:shadow-indigo-900/5 transition-all duration-500 cursor-pointer">
+                            <div class="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                <i data-lucide="lock" class="w-6 h-6 text-rose-600"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-slate-900 mb-2">Secure Cloud Vault</h4>
+                            <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                                Military-grade encryption for your most sensitive documents. Only you hold the decryption keys.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Global Privacy Breaches Map -->
+            <section class="pt-16 bg-slate-50 relative pb-10 overflow-hidden">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 relative z-10">
+                    <div class="text-center space-y-2 mb-6">
+                        <p class="text-xs font-bold uppercase tracking-[0.15em] text-rose-600">Global privacy breaches</p>
+                        <h3 class="text-2xl md:text-3xl font-extrabold text-slate-900">Real-time Threat Landscape</h3>
+                        <p class="text-slate-600 max-w-2xl mx-auto text-sm">Live visualization of compromised data nodes.</p>
+                    </div>
+                </div>
+                <div class="relative w-full">
+                    <div class="relative w-full max-w-[1400px] mx-auto z-10 px-4">
+                        <div id="breach-map"></div>
+                        <div class="absolute bottom-0 left-0 right-0 h-40 map-gradient-overlay pointer-events-none"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- News Section -->
+            <section id="news-section" class="py-16 bg-slate-50">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+                        <div>
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2">Breach Headlines</h2>
+                            <p class="text-slate-600 max-w-xl text-sm">
+                                Live feed of major data incidents reported by global cybersecurity agencies.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300">
+                            <div class="flex justify-between items-start mb-3">
+                                <span class="px-2 py-1 bg-rose-100 text-rose-700 text-[10px] font-bold uppercase rounded-md tracking-wide">Critical</span>
+                                <span class="text-slate-400 text-[10px]">2 hours ago</span>
+                            </div>
+                            <h3 class="text-base font-bold text-slate-900 mb-2 leading-tight">Healthcare Giant hit by Ransomware</h3>
+                            <p class="text-slate-500 text-xs leading-relaxed mb-4">Over 4.5 million patient records allegedly exfiltrated. Attackers demanding $5M in crypto-assets.</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300">
+                            <div class="flex justify-between items-start mb-3">
+                                <span class="px-2 py-1 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase rounded-md tracking-wide">Warning</span>
+                                <span class="text-slate-400 text-[10px]">5 hours ago</span>
+                            </div>
+                            <h3 class="text-base font-bold text-slate-900 mb-2 leading-tight">Telecom Data Leak in South Asia</h3>
+                            <p class="text-slate-500 text-xs leading-relaxed mb-4">A database containing KYC documents for 120M subscribers has appeared on dark web forums.</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300">
+                            <div class="flex justify-between items-start mb-3">
+                                <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-[10px] font-bold uppercase rounded-md tracking-wide">Alert</span>
+                                <span class="text-slate-400 text-[10px]">8 hours ago</span>
+                            </div>
+                            <h3 class="text-base font-bold text-slate-900 mb-2 leading-tight">Banking Trojan Spreads in Europe</h3>
+                            <p class="text-slate-500 text-xs leading-relaxed mb-4">A new variant of banking malware is targeting Tier-1 banks via phishing campaigns.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+
+        <!-- ================= VIEW: DASHBOARD (SECURED AREA) ================= -->
+        <div id="view-dashboard" class="view-section min-h-screen">
+            <div class="dashboard-layout">
+                <!-- SIDEBAR -->
+                <aside class="dashboard-sidebar hidden md:flex">
+                    <div class="h-16 flex items-center px-6 border-b border-slate-100">
+                        <span class="text-2xl org-name text-slate-900 cursor-pointer" onclick="switchView('home')">SyncVeil</span>
+                    </div>
+                    <div class="p-4 space-y-1">
+                        <button onclick="switchDashTab('overview')" class="dash-nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl bg-indigo-50 text-indigo-700">
+                            <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Overview
+                        </button>
+                        <button onclick="switchDashTab('vault')" class="dash-nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors">
+                            <i data-lucide="lock" class="w-5 h-5"></i> Encrypted Vault
+                        </button>
+                        <button onclick="switchDashTab('monitor')" class="dash-nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors">
+                            <i data-lucide="activity" class="w-5 h-5"></i> Breach Monitor
+                        </button>
+                        <button onclick="switchDashTab('settings')" class="dash-nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors">
+                            <i data-lucide="settings" class="w-5 h-5"></i> Account Settings
+                        </button>
+                    </div>
+                    <div class="mt-auto p-4 border-t border-slate-100">
+                        <button onclick="handleLogout()" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-rose-600 hover:bg-rose-50 transition-colors">
+                            <i data-lucide="log-out" class="w-5 h-5"></i> Sign Out
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- MOBILE SIDEBAR TOGGLE (Fixed to prevent scrolling away) -->
+                <div class="md:hidden fixed top-4 left-4 z-50">
+                    <button onclick="document.querySelector('.dashboard-sidebar').classList.toggle('hidden')" class="p-2 bg-white rounded-lg shadow-md">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <!-- MAIN DASHBOARD CONTENT -->
+                <main class="dashboard-main bg-slate-50">
+                    <!-- HEADER -->
+                    <header class="h-16 bg-white border-b border-slate-200 sticky top-0 z-30 flex items-center justify-between px-6 md:px-8">
+                        <h2 id="dash-header-title" class="text-lg font-bold text-slate-800">Overview</h2>
+                        <div class="flex items-center gap-4">
+                            <button class="relative p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                                <i data-lucide="bell" class="w-5 h-5"></i>
+                                <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+                            </button>
+                            <div class="flex items-center gap-3 pl-4 border-l border-slate-100">
+                                <div class="text-right hidden sm:block">
+                                    <p class="text-sm font-bold text-slate-900">Alex Morgan</p>
+                                    <p class="text-xs text-slate-500">Premium Plan</p>
+                                </div>
+                                <div class="w-9 h-9 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm">AM</div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <!-- TAB 1: OVERVIEW -->
+                    <div id="dash-tab-overview" class="dash-tab active p-6 md:p-8 max-w-7xl mx-auto">
+                        <!-- Welcome Banner -->
+                        <div class="mb-8 p-6 bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl text-white shadow-xl flex justify-between items-center relative overflow-hidden">
+                            <div class="relative z-10">
+                                <h1 class="text-2xl font-bold mb-2">Welcome back, Alex!</h1>
+                                <p class="text-indigo-100 text-sm max-w-lg">Your data vault is secure. No unauthorized access attempts detected in the last 24 hours.</p>
+                            </div>
+                            <div class="absolute right-0 top-0 h-full w-1/3 bg-white opacity-5 skew-x-12 transform translate-x-10"></div>
+                            <div class="hidden sm:block p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                                <i data-lucide="shield-check" class="w-8 h-8 text-green-400"></i>
+                            </div>
+                        </div>
+
+                        <!-- Stats Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="p-2 bg-indigo-50 rounded-lg"><i data-lucide="file-lock" class="w-5 h-5 text-indigo-600"></i></div>
+                                    <span class="text-sm font-medium text-slate-500">Encrypted Files</span>
+                                </div>
+                                <div class="flex items-end gap-2">
+                                    <h3 class="text-3xl font-extrabold text-slate-900">1,248</h3>
+                                    <span class="text-xs text-green-600 font-bold mb-1 flex items-center"><i data-lucide="arrow-up" class="w-3 h-3"></i> 12%</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="p-2 bg-teal-50 rounded-lg"><i data-lucide="hard-drive" class="w-5 h-5 text-teal-600"></i></div>
+                                    <span class="text-sm font-medium text-slate-500">Vault Storage</span>
+                                </div>
+                                <div class="flex items-end gap-2">
+                                    <h3 class="text-3xl font-extrabold text-slate-900">42%</h3>
+                                    <span class="text-xs text-slate-400 font-medium mb-1">21GB / 50GB</span>
+                                </div>
+                                <div class="w-full bg-slate-100 h-1.5 mt-3 rounded-full overflow-hidden">
+                                    <div class="bg-teal-500 h-full rounded-full w-[42%]"></div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="p-2 bg-rose-50 rounded-lg"><i data-lucide="activity" class="w-5 h-5 text-rose-600"></i></div>
+                                    <span class="text-sm font-medium text-slate-500">Threat Level</span>
+                                </div>
+                                <div class="flex items-end gap-2">
+                                    <h3 class="text-3xl font-extrabold text-slate-900">Low</h3>
+                                    <span class="text-xs text-slate-400 font-medium mb-1">Global average: High</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity List -->
+                        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                                <h3 class="font-bold text-slate-800">Recent Vault Activity</h3>
+                                <button class="text-indigo-600 text-xs font-bold hover:underline">View All</button>
+                            </div>
+                            <div class="divide-y divide-slate-50">
+                                <div class="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                                            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-800">financial_report_q3.pdf</p>
+                                            <p class="text-xs text-slate-500">Encrypted & Uploaded</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs text-slate-400">2 mins ago</span>
+                                </div>
+                                <div class="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                            <i data-lucide="download" class="w-4 h-4"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-800">client_list_encrypted.csv</p>
+                                            <p class="text-xs text-slate-500">Decrypted & Downloaded</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs text-slate-400">4 hours ago</span>
+                                </div>
+                                <div class="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                                            <i data-lucide="settings" class="w-4 h-4"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-800">Password Update</p>
+                                            <p class="text-xs text-slate-500">Account Security</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs text-slate-400">1 day ago</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: VAULT (UPLOAD) -->
+                    <div id="dash-tab-vault" class="dash-tab p-6 md:p-8 max-w-5xl mx-auto">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="p-6 border-b border-slate-100">
+                                <h3 class="text-lg font-bold text-slate-900">Secure File Encryption</h3>
+                                <p class="text-sm text-slate-500">Files are encrypted locally before upload using AES-256.</p>
+                            </div>
+                            
+                            <!-- Drag & Drop Area -->
+                            <div class="p-8">
+                                <div id="drop-zone" class="drop-zone rounded-xl p-10 text-center cursor-pointer relative" onclick="document.getElementById('file-input').click()">
+                                    <input type="file" id="file-input" class="hidden" multiple onchange="handleFiles(this.files)">
+                                    <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <i data-lucide="file-up" class="w-8 h-8"></i>
+                                    </div>
+                                    <h4 class="text-base font-bold text-slate-800">Click to upload or drag and drop</h4>
+                                    <p class="text-sm text-slate-500 mt-2">SVG, PNG, JPG, PDF or DOCX (max. 50MB)</p>
+                                </div>
+
+                                <!-- Upload Progress / List -->
+                                <div id="upload-list" class="mt-6 space-y-3">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Existing Files Table -->
+                        <div class="mt-8">
+                            <h3 class="text-lg font-bold text-slate-900 mb-4">My Encrypted Vault</h3>
+                            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                                <table class="w-full text-left text-sm text-slate-600">
+                                    <thead class="bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th class="px-6 py-3 font-semibold">Filename</th>
+                                            <th class="px-6 py-3 font-semibold">Date</th>
+                                            <th class="px-6 py-3 font-semibold">Size</th>
+                                            <th class="px-6 py-3 font-semibold">Status</th>
+                                            <th class="px-6 py-3 font-semibold text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        <tr>
+                                            <td class="px-6 py-4 font-medium text-slate-900 flex items-center gap-2">
+                                                <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i> tax_returns_2024.pdf
+                                            </td>
+                                            <td class="px-6 py-4">Oct 24, 2024</td>
+                                            <td class="px-6 py-4">2.4 MB</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs font-bold">Encrypted</span></td>
+                                            <td class="px-6 py-4 text-right">
+                                                <button class="text-slate-400 hover:text-indigo-600"><i data-lucide="more-horizontal" class="w-4 h-4"></i></button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-6 py-4 font-medium text-slate-900 flex items-center gap-2">
+                                                <i data-lucide="image" class="w-4 h-4 text-slate-400"></i> passport_scan.jpg
+                                            </td>
+                                            <td class="px-6 py-4">Sep 12, 2024</td>
+                                            <td class="px-6 py-4">1.1 MB</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs font-bold">Encrypted</span></td>
+                                            <td class="px-6 py-4 text-right">
+                                                <button class="text-slate-400 hover:text-indigo-600"><i data-lucide="more-horizontal" class="w-4 h-4"></i></button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: SETTINGS -->
+                    <div id="dash-tab-settings" class="dash-tab p-6 md:p-8 max-w-3xl mx-auto">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="p-6 border-b border-slate-100">
+                                <h3 class="text-lg font-bold text-slate-900">Account Settings</h3>
+                                <p class="text-sm text-slate-500">Manage your profile and security preferences.</p>
+                            </div>
+                            <div class="p-6 space-y-6">
+                                <div class="grid md:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-bold text-slate-700">Display Name</label>
+                                        <input type="text" value="Alex Morgan" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-bold text-slate-700">Email Address</label>
+                                        <input type="email" value="alex.m@company.com" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                    </div>
+                                </div>
+                                <div class="pt-4 border-t border-slate-100">
+                                    <h4 class="text-sm font-bold text-slate-900 mb-4">Security</h4>
+                                    <div class="flex items-center justify-between py-3">
+                                        <div>
+                                            <p class="text-sm font-medium text-slate-800">Two-Factor Authentication</p>
+                                            <p class="text-xs text-slate-500">Add an extra layer of security.</p>
+                                        </div>
+                                        <div class="relative inline-block w-10 h-6 align-middle select-none transition duration-200 ease-in">
+                                            <input type="checkbox" checked class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-indigo-600 right-0"/>
+                                            <label class="toggle-label block overflow-hidden h-6 rounded-full bg-indigo-600 cursor-pointer"></label>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between py-3">
+                                        <div>
+                                            <p class="text-sm font-medium text-slate-800">Email Notifications</p>
+                                            <p class="text-xs text-slate-500">Receive alerts about login attempts.</p>
+                                        </div>
+                                        <div class="relative inline-block w-10 h-6 align-middle select-none transition duration-200 ease-in">
+                                            <input type="checkbox" checked class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-indigo-600 right-0"/>
+                                            <label class="toggle-label block overflow-hidden h-6 rounded-full bg-indigo-600 cursor-pointer"></label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="pt-4 flex justify-end gap-3">
+                                    <button class="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900">Cancel</button>
+                                    <button class="px-5 py-2.5 text-sm font-bold text-white bg-slate-900 rounded-lg hover:bg-indigo-600 transition-colors">Save Changes</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     <!-- TAB 4: MONITOR PLACEHOLDER (Reusing Map Logic) -->
+                     <div id="dash-tab-monitor" class="dash-tab p-6 md:p-8 max-w-7xl mx-auto h-full flex flex-col">
+                         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex-1 flex flex-col">
+                             <h3 class="text-lg font-bold text-slate-900 mb-4">Live Threat Monitor</h3>
+                             <div class="flex-1 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
+                                 <p>Map Visualization loaded in main view (See Landing Page for full demo).</p>
+                             </div>
+                         </div>
+                     </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- ================= VIEW: INFORMATION (Dynamic) ================= -->
+        <div id="view-info" class="view-section pt-28 pb-20 min-h-[calc(100vh-var(--nav-height))] bg-white">
+            <div class="max-w-3xl mx-auto px-6">
+                <button onclick="switchView('home')" class="mb-8 text-slate-500 hover:text-indigo-600 font-medium flex items-center gap-2">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Home
+                </button>
+                <h1 id="info-title" class="text-4xl font-extrabold text-slate-900 mb-6"></h1>
+                <div id="info-content" class="prose prose-slate max-w-none text-slate-600 leading-relaxed">
+                    <!-- Content injected via JS -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- JSVectorMap Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/js/jsvectormap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/maps/world.js"></script>
+
+    <!-- JS LOGIC START -->
+    <script>
+        lucide.createIcons();
+        let mapInstance = null;
+
+        // --- DASHBOARD LOGIC ---
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            btn.innerText = "Authenticating...";
+            btn.disabled = true;
+
+            setTimeout(() => {
+                // Instead of alerting, switch to dashboard
+                enterDashboard();
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }, 1000);
+        }
+
+        function handleSignup(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            btn.innerText = "Creating Vault...";
+            btn.disabled = true;
+
+            setTimeout(() => {
+                // Instead of alerting, switch to dashboard
+                enterDashboard();
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }, 1000);
+        }
+
+        function enterDashboard() {
+            // Hide public elements - CHANGED: Footer remains visible
+            document.getElementById('public-nav').style.display = 'none';
+            // document.getElementById('public-footer').style.display = 'none'; // REMOVED
+            
+            // Switch view
+            switchView('dashboard');
+        }
+
+        function handleLogout() {
+            if(confirm("Are you sure you want to log out?")) {
+                // Show public elements
+                document.getElementById('public-nav').style.display = 'block';
+                document.getElementById('public-footer').style.display = 'block';
+                switchView('home');
+            }
+        }
+
+        // Switch Tabs inside Dashboard
+        function switchDashTab(tabName) {
+            // Update Navigation Buttons
+            document.querySelectorAll('.dash-nav-btn').forEach(btn => {
+                // Reset styles
+                btn.classList.remove('bg-indigo-50', 'text-indigo-700');
+                btn.classList.add('text-slate-600');
+                
+                // If it's the clicked button
+                if(btn.onclick.toString().includes(tabName)) {
+                    btn.classList.add('bg-indigo-50', 'text-indigo-700');
+                    btn.classList.remove('text-slate-600');
+                }
+            });
+
+            // Hide all Tabs
+            document.querySelectorAll('.dash-tab').forEach(tab => tab.classList.remove('active'));
+
+            // Show Target Tab
+            const target = document.getElementById('dash-tab-' + tabName);
+            if(target) target.classList.add('active');
+
+            // Update Header Title
+            const titles = {
+                'overview': 'Overview',
+                'vault': 'Encrypted Vault',
+                'monitor': 'Breach Monitor',
+                'settings': 'Account Settings'
+            };
+            document.getElementById('dash-header-title').innerText = titles[tabName];
+        }
+
+        // File Upload Logic
+        function handleFiles(files) {
+            const list = document.getElementById('upload-list');
+            
+            Array.from(files).forEach(file => {
+                const id = Math.random().toString(36).substr(2, 9);
+                
+                // Create Element
+                const item = document.createElement('div');
+                item.className = "flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200 animate-fade-in-up";
+                item.id = id;
+                item.innerHTML = `
+                    <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-200">
+                        <i data-lucide="file" class="w-5 h-5 text-slate-400"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold text-slate-800 truncate">${file.name}</p>
+                        <div class="w-full bg-slate-200 h-1 mt-2 rounded-full overflow-hidden">
+                            <div class="progress-bar bg-indigo-600 h-full rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <span class="status-text text-xs font-bold text-indigo-600">Encrypting...</span>
+                `;
+                list.prepend(item);
+                lucide.createIcons();
+
+                // Simulate Encryption Progress
+                setTimeout(() => {
+                    const bar = item.querySelector('.progress-bar');
+                    bar.style.transition = "width 1.5s ease-in-out";
+                    bar.style.width = "100%";
+                    
+                    setTimeout(() => {
+                        const status = item.querySelector('.status-text');
+                        status.innerText = "Secured";
+                        status.classList.remove('text-indigo-600');
+                        status.classList.add('text-green-600');
+                        
+                        // Change icon to lock
+                        const iconContainer = item.querySelector('.w-10');
+                        iconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-green-600"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+                    }, 1500);
+                }, 100);
+            });
+        }
+
+        // Drag and Drop Events
+        const dropZone = document.getElementById('drop-zone');
+        if(dropZone) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight(e) {
+                dropZone.classList.add('dragover');
+            }
+
+            function unhighlight(e) {
+                dropZone.classList.remove('dragover');
+            }
+
+            dropZone.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles(files);
+            }
+        }
+
+        // --- CORE NAVIGATION LOGIC ---
+
+        function updateNavHeightVar() {
+            const nav = document.querySelector('nav#public-nav');
+            if (!nav || nav.style.display === 'none') return;
+            const h = nav.offsetHeight || 72;
+            document.documentElement.style.setProperty('--nav-height', h + 'px');
+        }
+        window.addEventListener('load', updateNavHeightVar);
+        window.addEventListener('resize', updateNavHeightVar);
+        updateNavHeightVar();
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('open');
+        }
+
+        function switchView(viewId) {
+            updateNavHeightVar();
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById('view-' + viewId);
+            if (target) {
+                target.classList.add('active');
+                window.scrollTo({ top: 0, behavior: 'instant' });
+
+                if (viewId === 'home') {
+                    setTimeout(() => {
+                        if (mapInstance) {
+                            if (typeof mapInstance.updateSize === 'function') mapInstance.updateSize();
+                        } else {
+                            initMap();
+                        }
+                    }, 60);
+                }
+                lucide.createIcons();
+            }
+        }
+
+        function showInfo(title) {
+            const contentDiv = document.getElementById('info-content');
+            document.getElementById('info-title').innerText = title;
+            contentDiv.innerHTML = `
+                <p class="mb-4">This is a placeholder page for <strong>${title}</strong>. In a production environment, this would contain the specific legal details, contact forms, or feature breakdowns pertinent to the user's selection.</p>
+                <p class="mb-4">SyncVeil is dedicated to ensuring transparency in all our operations. Our mission is to provide robust privacy tools that are easy to use and accessible to everyone.</p>
+                <ul class="list-disc pl-5 space-y-2 mb-4">
+                    <li>Comprehensive Data Protection</li>
+                    <li>Real-time Anomaly Detection</li>
+                    <li>User-Centric Privacy Controls</li>
+                </ul>
+                <p>Contact our support team at <a href="#" class="text-indigo-600 hover:underline">support@syncveil.com</a> for more detailed information.</p>
+            `;
+            switchView('info');
+        }
+
+        function scrollToSection(sectionId) {
+            if(!document.getElementById('view-home').classList.contains('active')) {
+                switchView('home');
+                setTimeout(() => {
+                    const el = document.getElementById(sectionId);
+                    if(el) el.scrollIntoView({ behavior: 'smooth' });
+                }, 120);
+            } else {
+                const el = document.getElementById(sectionId);
+                if(el) el.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // --- MAP DATA ---
+        const countryCodes = ["AF","AL","DZ","AO","AR","AM","AU","AT","AZ","BS","BD","BY","BE","BZ","BJ","BT","BO","BA","BW","BR","BN","BG","BF","BI","KH","CM","CA","CV","CF","TD","CL","CN","CO","KM","CD","CG","CR","CI","HR","CU","CY","CZ","DK","DJ","DO","EC","EG","SV","GQ","ER","EE","ET","FK","FJ","FI","FR","GA","GM","GE","DE","GH","GR","GL","GT","GN","GW","GY","HT","HN","HK","HU","IS","IN","ID","IR","IQ","IE","IL","IT","JM","JP","JO","KZ","KE","KP","KR","KW","KG","LA","LV","LB","LS","LR","LY","LT","LU","MK","MG","MW","MY","MV","ML","MT","MR","MU","MX","MD","MN","ME","MA","MZ","MM","NA","NP","NL","NC","NZ","NI","NE","NG","NO","OM","PK","PA","PG","PY","PE","PH","PL","PT","PR","QA","XK","RO","RU","RW","SA","SN","RS","SL","SG","SK","SI","SB","SO","ZA","SS","ES","LK","SD","SR","SZ","SE","CH","SY","TW","TJ","TZ","TH","TL","TG","TT","TN","TR","TM","UG","UA","AE","GB","US","UY","UZ","VU","VE","VN","YE","ZM","ZW"];
+        const highRiskTargets = {
+            "US": { score: 95, label: "3.2M Records" },
+            "CN": { score: 88, label: "2.1M Records" },
+            "RU": { score: 92, label: "1.8M Records" },
+            "IN": { score: 85, label: "2.5M Records" },
+            "BR": { score: 82, label: "1.2M Records" },
+            "DE": { score: 75, label: "950K Records" },
+            "GB": { score: 78, label: "820K Records" },
+            "FR": { score: 72, label: "600K Records" },
+            "AU": { score: 65, label: "450K Records" },
+            "UA": { score: 85, label: "Conflict Zone Activity" },
+            "IR": { score: 80, label: "Targeted Attacks" }
+        };
+        const breachData = {};
+        countryCodes.forEach(code => {
+            if (highRiskTargets[code]) {
+                breachData[code] = highRiskTargets[code].score;
+            } else {
+                breachData[code] = Math.floor(Math.random() * 40) + 10;
+            }
+        });
+
+        function initMap() {
+            const mapEl = document.getElementById('breach-map');
+            if (mapEl && window.jsVectorMap) {
+                mapEl.innerHTML = '';
+                mapInstance = new jsVectorMap({
+                    selector: '#breach-map',
+                    map: 'world',
+                    backgroundColor: 'transparent',
+                    draggable: true,
+                    zoomButtons: false,
+                    zoomOnScroll: false,
+                    visualizeData: {
+                        scale: ['#e2e8f0', '#e11d48'],
+                        values: breachData
+                    },
+                    regionStyle: {
+                        initial: { fill: '#cbd5e1', stroke: '#ffffff', strokeWidth: 0.5, fillOpacity: 1 },
+                        hover: { fillOpacity: 0.8, cursor: 'pointer' },
+                        selected: { fill: '#4f46e5' }
+                    },
+                    onRegionTooltipShow(event, tooltip, code) {
+                        let content = `<div class="font-bold text-white mb-1">${tooltip.text()}</div>`;
+                        if (highRiskTargets[code]) {
+                             content += `<div class="text-rose-400 font-bold text-xs">⚠️ High Activity</div>`;
+                             content += `<div class="text-slate-300 text-xs">${highRiskTargets[code].label} exposed</div>`;
+                        } else {
+                             const count = (breachData[code] || 10) * 1240;
+                             content += `<div class="text-teal-400 font-bold text-xs">Low Activity</div>`;
+                             content += `<div class="text-slate-300 text-xs">~${(count/1000).toFixed(1)}K anomalies</div>`;
+                        }
+                        tooltip.text(content, true);
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if(document.getElementById('view-home').classList.contains('active')) {
+                initMap();
+            }
+        });
+        window.addEventListener('resize', () => {
+            updateNavHeightVar();
+            if (mapInstance && typeof mapInstance.updateSize === 'function') {
+                mapInstance.updateSize();
+            }
+        });
+    </script>
+        <!-- Global Footer -->
+        <footer class="border-t mt-20">
+            <div class="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm text-slate-600">
+                <div>© 2025 SyncVeil Inc.</div>
+                <nav class="flex flex-wrap gap-4">
+                    <a href="./app.html" class="hover:text-indigo-600">Home</a>
+                    <a href="./app.html" class="hover:text-indigo-600">Open App</a>
+                    <a href="./privacy-policy.html" class="hover:text-indigo-600">Privacy Policy</a>
+                    <a href="./terms-of-service.html" class="hover:text-indigo-600">Terms of Service</a>
+                    <a href="./cookie-policy.html" class="hover:text-indigo-600">Cookie Policy</a>
+                </nav>
+            </div>
+        </footer>
+
+</body>
+</html>

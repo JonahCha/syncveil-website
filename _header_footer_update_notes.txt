@@ -1,0 +1,1 @@
+Updated header logo links and footer Home links to app.html across pages.
