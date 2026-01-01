@@ -115,18 +115,18 @@
                 <p class="text-slate-500 text-xs mt-1">Enter your credentials to access.</p>
             </div>
 
-            <form onsubmit="handleSubmit(event, 'Logging in...')" class="space-y-4">
+            <form id="login-form" class="space-y-4">
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-700">Email</label>
                     <div class="relative">
-                        <input type="email" placeholder="you@company.com" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" required>
+                        <input id="login-email" name="email" type="email" placeholder="you@company.com" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" required>
                         <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
                     </div>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-700">Password</label>
                     <div class="relative">
-                        <input type="password" placeholder="••••••••" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" required>
+                        <input id="login-password" name="password" type="password" placeholder="••••••••" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" required>
                         <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
                     </div>
                 </div>
@@ -137,6 +137,8 @@
                     </label>
                     <a href="#" class="text-indigo-600 font-bold hover:underline">Forgot?</a>
                 </div>
+
+                <div id="login-status" class="text-xs font-semibold"></div>
 
                 <button type="submit" class="w-full py-3 bg-slate-900 text-white rounded-lg font-bold hover:bg-indigo-600 shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 text-sm">Log In</button>
             </form>
@@ -160,19 +162,19 @@
                 <p class="text-slate-500 text-xs mt-1">Start your 14-day free trial.</p>
             </div>
 
-            <form onsubmit="handleSubmit(event, 'Creating Account...')" class="space-y-4">
+            <form id="signup-form" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-1">
                         <label class="text-xs font-bold text-slate-700">Full Name</label>
                         <div class="relative">
-                            <input type="text" placeholder="John Doe" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" required>
+                            <input id="signup-name" name="name" type="text" placeholder="John Doe" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" required>
                             <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
                         </div>
                     </div>
                     <div class="space-y-1">
                         <label class="text-xs font-bold text-slate-700">Mobile</label>
                         <div class="relative">
-                            <input type="tel" placeholder="+1 (555)..." class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input id="signup-phone" name="phone" type="tel" placeholder="+1 (555)..." class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                             <i data-lucide="phone" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
                         </div>
                     </div>
@@ -181,7 +183,7 @@
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-700">Email</label>
                     <div class="relative">
-                        <input type="email" placeholder="you@company.com" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" required>
+                        <input id="signup-email" name="email" type="email" placeholder="you@company.com" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" required>
                         <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
                     </div>
                 </div>
@@ -189,10 +191,12 @@
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-700">Password</label>
                     <div class="relative">
-                        <input type="password" placeholder="Strong password" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" required>
+                        <input id="signup-password" name="password" type="password" placeholder="Strong password" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" required>
                         <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
                     </div>
                 </div>
+
+                <div id="signup-status" class="text-xs font-semibold"></div>
 
                 <button type="submit" class="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 text-sm">Create Account</button>
             </form>
@@ -222,38 +226,198 @@
     <script>
         lucide.createIcons();
 
+        // Detect API base URL based on environment
+        function getApiBaseUrl() {
+            const currentUrl = window.location.href;
+            const currentHost = window.location.host;
+            const currentProtocol = window.location.protocol;
+            
+            console.log('🌐 Detection - Current URL:', currentUrl);
+            console.log('🌐 Detection - Current Host:', currentHost);
+            console.log('🌐 Detection - Current Protocol:', currentProtocol);
+            
+            // Check if we're on a forwarded port (GitHub Codespaces or similar cloud IDE)
+            // Patterns: 
+            // - *.github.dev
+            // - *.githubpreview.dev
+            // - *.app.github.dev
+            // - other cloud IDEs with port-based forwarding
+            if (currentHost.includes('.github.dev') || 
+                currentHost.includes('.githubpreview.dev') || 
+                currentHost.includes('.app.github.dev') ||
+                currentHost.includes('gitpod.io') ||
+                currentHost.includes('.repl.co')) {
+                
+                // Replace the port number in the host
+                const backendHost = currentHost.replace(/[-:]5500/, '-8000').replace(':5500', ':8000');
+                const backendUrl = `${currentProtocol}//${backendHost}`;
+                console.log('🔧 Detected cloud environment, using:', backendUrl);
+                return backendUrl;
+            }
+            
+            // Default to localhost for local development
+            console.log('🔧 Using localhost backend');
+            return 'http://localhost:8000';
+        }
+        
+        const API_BASE = getApiBaseUrl();
+        
+        console.log('🔧 API_BASE configured as:', API_BASE);
+        console.log('🌐 Current page URL:', window.location.href);
+        console.log('🌐 Page hostname:', window.location.hostname);
+        console.log('🌐 Page port:', window.location.port);
+        
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const loginStatus = document.getElementById('login-status');
+        const signupStatus = document.getElementById('signup-status');
+
         function switchView(viewName) {
-            // Hide all views
             document.querySelectorAll('[id^="view-"]').forEach(el => {
                 el.classList.add('hidden-view');
-                el.classList.remove('animate-fade-in-up'); // Reset animation
+                el.classList.remove('animate-fade-in-up');
             });
 
-            // Show target view
             const target = document.getElementById('view-' + viewName);
-            if(target) {
+            if (target) {
                 target.classList.remove('hidden-view');
-                // Trigger reflow to restart animation
                 void target.offsetWidth;
                 target.classList.add('animate-fade-in-up');
                 lucide.createIcons();
             }
+            clearStatus();
         }
 
-        function handleSubmit(e, msg) {
-            e.preventDefault();
-            const btn = e.target.querySelector('button[type="submit"]');
-            const originalText = btn.innerText;
+        function clearStatus() {
+            [loginStatus, signupStatus].forEach(el => {
+                if (!el) return;
+                el.textContent = '';
+                el.className = 'text-xs font-semibold';
+            });
+        }
+
+        function setStatus(el, message, tone = 'info') {
+            if (!el) return;
+            const colors = {
+                success: 'text-green-600',
+                error: 'text-rose-600',
+                info: 'text-slate-500'
+            };
+            el.textContent = message;
+            el.className = `text-xs font-semibold ${colors[tone] || colors.info}`;
+        }
+
+        function setLoading(form, isLoading) {
+            const button = form.querySelector('button[type="submit"]');
+            if (!button) return;
+            button.disabled = isLoading;
+            button.classList.toggle('opacity-75', isLoading);
+            button.classList.toggle('cursor-not-allowed', isLoading);
+        }
+
+        async function apiRequest(path, payload) {
+            const url = `${API_BASE}${path}`;
+            console.log('📡 Full URL:', url);
+            console.log('📡 API_BASE:', API_BASE);
+            console.log('📡 Path:', path);
+            console.log('📦 Payload:', payload);
             
-            btn.innerText = msg;
-            btn.disabled = true;
-            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
 
-            setTimeout(() => {
-                // Mock redirect to dashboard (in a real app, this would be a server redirect or state change)
-                window.location.href = 'dashboard.html'; 
-            }, 1500);
+                console.log('Response status:', response.status, response.statusText);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                // Try to parse JSON response
+                let data;
+                const text = await response.text();
+                console.log('Raw response text:', text);
+                
+                if (!text) {
+                    throw new Error(`Server returned empty response (Status: ${response.status})`);
+                }
+                
+                try {
+                    data = JSON.parse(text);
+                    console.log('Parsed data:', data);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    console.error('Response was:', text);
+                    throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`);
+                }
+                
+                if (!response.ok) {
+                    const detail = data.detail || 'Request failed';
+                    const errorMsg = Array.isArray(detail) 
+                        ? (detail[0].msg || detail[0].message || JSON.stringify(detail[0]))
+                        : (typeof detail === 'string' ? detail : JSON.stringify(detail));
+                    throw new Error(errorMsg);
+                }
+                return data;
+            } catch (err) {
+                console.error('API Error:', err);
+                if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+                    throw new Error('Cannot connect to backend server. Make sure it is running on port 8000.');
+                }
+                throw err;
+            }
         }
+
+        function persistSession(result) {
+            if (result.access_token) localStorage.setItem('syncveil.accessToken', result.access_token);
+            if (result.refresh_token) localStorage.setItem('syncveil.refreshToken', result.refresh_token);
+            if (result.user) localStorage.setItem('syncveil.user', JSON.stringify(result.user));
+        }
+
+        async function handleSignup(event) {
+            event.preventDefault();
+            clearStatus();
+            setLoading(signupForm, true);
+
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value.trim();
+
+            try {
+                const result = await apiRequest('/auth/signup', { email, password });
+                persistSession(result);
+                setStatus(signupStatus, 'Account created. Redirecting...', 'success');
+                setTimeout(() => window.location.href = 'dashboard.html', 600);
+            } catch (err) {
+                setStatus(signupStatus, err.message || 'Could not create account', 'error');
+            } finally {
+                setLoading(signupForm, false);
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            clearStatus();
+            setLoading(loginForm, true);
+
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+
+            try {
+                const result = await apiRequest('/auth/login', { email, password });
+                persistSession(result);
+                setStatus(loginStatus, 'Login successful. Redirecting...', 'success');
+                setTimeout(() => window.location.href = 'dashboard.html', 400);
+            } catch (err) {
+                setStatus(loginStatus, err.message || 'Login failed', 'error');
+            } finally {
+                setLoading(loginForm, false);
+            }
+        }
+
+        if (signupForm) signupForm.addEventListener('submit', handleSignup);
+        if (loginForm) loginForm.addEventListener('submit', handleLogin);
     </script>
 </body>
 </html>

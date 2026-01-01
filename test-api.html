@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test - SyncVeil</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>SyncVeil API Test</h1>
+    
+    <div class="test-section">
+        <h2>Backend Status</h2>
+        <p>API Base URL: <strong id="api-url"></strong></p>
+        <button onclick="testHealth()">Test Health Endpoint</button>
+        <div id="health-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Signup</h2>
+        <input type="email" id="signup-email" placeholder="test@example.com" value="demo@test.com">
+        <input type="password" id="signup-password" placeholder="password" value="password123">
+        <button onclick="testSignup()">Test Signup</button>
+        <div id="signup-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Login</h2>
+        <input type="email" id="login-email" placeholder="test@example.com" value="demo@test.com">
+        <input type="password" id="login-password" placeholder="password" value="password123">
+        <button onclick="testLogin()">Test Login</button>
+        <div id="login-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:8000'
+            : window.location.origin;
+        
+        document.getElementById('api-url').textContent = API_BASE;
+
+        async function testHealth() {
+            const result = document.getElementById('health-result');
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                result.innerHTML = `<pre class="success">✓ Success:\n${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<pre class="error">✗ Error:\n${error.message}</pre>`;
+            }
+        }
+
+        async function testSignup() {
+            const result = document.getElementById('signup-result');
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `<pre class="success">✓ Success (${response.status}):\n${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    result.innerHTML = `<pre class="error">✗ Failed (${response.status}):\n${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<pre class="error">✗ Network Error:\n${error.message}</pre>`;
+                console.error(error);
+            }
+        }
+
+        async function testLogin() {
+            const result = document.getElementById('login-result');
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `<pre class="success">✓ Success (${response.status}):\n${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    result.innerHTML = `<pre class="error">✗ Failed (${response.status}):\n${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<pre class="error">✗ Network Error:\n${error.message}</pre>`;
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>

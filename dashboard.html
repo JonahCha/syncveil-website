@@ -225,17 +225,17 @@
         <!-- User Footer -->
         <div class="p-4 border-t border-slate-100 bg-white shrink-0">
             <div class="flex items-center gap-3 mb-3 px-2">
-                <div class="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
-                    AM
+                <div id="user-avatar" class="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                    ?
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-slate-900 truncate">Alex Morgan</p>
-                    <p class="text-[11px] text-slate-500 truncate">alex.m@gmail.com</p>
+                    <p id="user-name" class="text-sm font-bold text-slate-900 truncate">Loading...</p>
+                    <p id="user-email" class="text-[11px] text-slate-500 truncate">...</p>
                 </div>
             </div>
-            <a href="app.html" class="flex items-center justify-center gap-2 w-full px-3 py-2.5 text-sm font-medium text-rose-600 bg-rose-50 rounded-lg hover:bg-rose-100 hover:text-rose-700 transition-colors">
+            <button onclick="handleLogout()" class="flex items-center justify-center gap-2 w-full px-3 py-2.5 text-sm font-medium text-rose-600 bg-rose-50 rounded-lg hover:bg-rose-100 hover:text-rose-700 transition-colors">
                 <i data-lucide="log-out" class="w-4 h-4"></i> Sign Out
-            </a>
+            </button>
         </div>
     </aside>
 
@@ -279,7 +279,7 @@
                 
                 <!-- ================= TAB: OVERVIEW ================= -->
                 <div id="tab-overview" class="tab-content active">
-                    <h1 class="text-2xl font-bold text-slate-900 mb-6 tracking-tight">Hello, Alex</h1>
+                    <h1 id="welcome-message" class="text-2xl font-bold text-slate-900 mb-6 tracking-tight">Hello</h1>
                     
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
@@ -1258,6 +1258,93 @@
     </div>
 
     <script>
+        // Detect API base URL based on environment
+        function getApiBaseUrl() {
+            const currentUrl = window.location.href;
+            const currentHost = window.location.host;
+            const currentProtocol = window.location.protocol;
+            
+            // Check if we're on a forwarded port (GitHub Codespaces or similar cloud IDE)
+            if (currentHost.includes('.github.dev') || 
+                currentHost.includes('.githubpreview.dev') || 
+                currentHost.includes('.app.github.dev') ||
+                currentHost.includes('gitpod.io') ||
+                currentHost.includes('.repl.co')) {
+                
+                // Replace the port number in the host
+                const backendHost = currentHost.replace(/[-:]5500/, '-8000').replace(':5500', ':8000');
+                const backendUrl = `${currentProtocol}//${backendHost}`;
+                console.log('🔧 Detected cloud environment, using:', backendUrl);
+                return backendUrl;
+            }
+            
+            // Default to localhost for local development
+            console.log('🔧 Using localhost backend');
+            return 'http://localhost:8000';
+        }
+        
+        const API_BASE = getApiBaseUrl();
+        console.log('🔧 Dashboard API_BASE configured as:', API_BASE);
+
+        function checkAuth() {
+            const accessToken = localStorage.getItem('syncveil.accessToken');
+            const userStr = localStorage.getItem('syncveil.user');
+            
+            if (!accessToken || !userStr) {
+                console.log('No authentication found, redirecting to auth page');
+                window.location.href = 'auth.html';
+                return null;
+            }
+            
+            try {
+                const user = JSON.parse(userStr);
+                return user;
+            } catch (err) {
+                console.error('Failed to parse user data:', err);
+                window.location.href = 'auth.html';
+                return null;
+            }
+        }
+
+        function getInitials(email) {
+            if (!email) return '?';
+            const parts = email.split('@')[0].split('.');
+            if (parts.length >= 2) {
+                return (parts[0][0] + parts[1][0]).toUpperCase();
+            }
+            return email.substring(0, 2).toUpperCase();
+        }
+
+        function loadUserData() {
+            const user = checkAuth();
+            if (!user) return;
+
+            // Update user info in sidebar
+            const userEmail = user.email || 'user@example.com';
+            const userName = user.name || userEmail.split('@')[0];
+            const initials = getInitials(userEmail);
+
+            document.getElementById('user-email').textContent = userEmail;
+            document.getElementById('user-name').textContent = userName;
+            document.getElementById('user-avatar').textContent = initials;
+            document.getElementById('welcome-message').textContent = `Hello, ${userName}`;
+            
+            console.log('User data loaded:', { email: userEmail, name: userName, initials });
+        }
+
+        function handleLogout() {
+            // Clear all stored data
+            localStorage.removeItem('syncveil.accessToken');
+            localStorage.removeItem('syncveil.refreshToken');
+            localStorage.removeItem('syncveil.user');
+            
+            console.log('User logged out, redirecting to auth page');
+            window.location.href = 'auth.html';
+        }
+
+        // Load user data on page load
+        loadUserData();
+        
         lucide.createIcons();
 
         function toggleSidebar() {

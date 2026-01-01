@@ -109,7 +109,95 @@ If privacy is your superpower,
 **SyncVeil is your suit.**
 
 ---
+## 🚀 **Backend Setup & Development**
 
+### Project Structure
+
+```
+.
+├── app/                    # FastAPI backend
+│   ├── auth/              # Authentication module
+│   ├── core/              # Core utilities (JWT, security)
+│   ├── db/                # Database configuration
+│   └── main.py            # FastAPI application entry point
+├── *.html                 # Frontend HTML pages
+└── requirements.txt       # Python dependencies
+```
+
+### Installation
+
+1. **Install Python Dependencies**
+
+```bash
+# Create virtual environment
+python -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate  # Linux/Mac
+# or
+.venv\Scripts\activate     # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+2. **Configure Environment**
+
+```bash
+# Copy example environment file
+cp .env.example .env
+
+# Edit .env with your configuration
+# At minimum, set JWT_SECRET to a secure random string
+```
+
+3. **Start Backend Server**
+
+```bash
+# Using the startup script
+./start_backend.sh
+
+# Or manually
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Backend: `http://localhost:8000`  
+API Docs: `http://localhost:8000/docs`
+
+4. **Serve Frontend**
+
+```bash
+# Using Python's built-in server
+python -m http.server 5500
+
+# Or use VS Code Live Server extension
+```
+
+### API Endpoints
+
+- `GET /health` - Health check
+- `POST /auth/signup` - Register new user
+- `POST /auth/login` - Authenticate user  
+- `GET /auth/verify?token=<token>` - Verify email
+
+### Environment Variables
+
+See `.env.example` for all configuration options:
+- `DATABASE_URL` - Database connection (default: SQLite)
+- `JWT_SECRET` - Secret key for JWT tokens
+- `AUTO_VERIFY_EMAIL` - Skip email verification (dev)
+- `CORS_ORIGINS` - Allowed frontend origins
+
+### Security Notes
+
+⚠️ **For production deployment:**
+1. Set a strong `JWT_SECRET`
+2. Use PostgreSQL instead of SQLite
+3. Configure SMTP for email verification
+4. Set proper CORS origins
+5. Use HTTPS/TLS
+
+---
 ## 💬 **Join the SyncVeil Journey**
 
 Whether you're here as a user, a collaborator, or someone curious about privacy — welcome aboard.
