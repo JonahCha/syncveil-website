@@ -69,13 +69,13 @@ app.include_router(mongodb_router, prefix="/api")
 
 serve_static = os.getenv("SERVE_STATIC_FRONTEND", "").lower() == "true"
 
-# Keep static frontend optional; default to API-only so backend does not depend on HTML assets
+# Optional static frontend: only serve built Vite assets from dist/
 if serve_static:
-	static_dir = Path(__file__).parent.parent  # Go up to project root
-	if static_dir.exists() and (static_dir / "index.html").exists():
-		print(f"📁 Serving static files from: {static_dir}")
-		app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+	dist_dir = Path(__file__).parent.parent / "dist"
+	if dist_dir.exists() and (dist_dir / "index.html").exists():
+		print(f"📁 Serving static files from: {dist_dir}")
+		app.mount("/", StaticFiles(directory=str(dist_dir), html=True), name="static")
 	else:
-		print("⚠️  Static files directory not found, running in API-only mode")
+		print("⚠️  dist/ not found; running in API-only mode")
 else:
 	print("ℹ️  Static file serving disabled (API-only mode)")
