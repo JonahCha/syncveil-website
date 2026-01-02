@@ -62,23 +62,36 @@ GITHUBSTUDENT50-NW6GKJ
    mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
    ```
 
-### 7. Update Your .env File
+### 7. Configure Environment Variables
+
+**For Local Development:**
 
 1. Open `.env` in your project
-2. Replace the MongoDB URL with your connection string:
+2. Add your MongoDB Atlas connection string:
    ```env
-   MONGODB_URL=mongodb+srv://syncveil_user:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
-   MONGODB_DB_NAME=syncveil
+   MONGO_URI=mongodb+srv://syncveil_user:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+   MONGO_DB_NAME=syncveil
    ```
-3. Replace `<username>` with your database username
-4. Replace `<password>` with your database password
+3. Replace `syncveil_user` with your database username
+4. Replace `YOUR_PASSWORD` with your database password
 5. Replace the cluster URL with your actual cluster URL
 
 **Example:**
 ```env
-MONGODB_URL=mongodb+srv://syncveil_user:MySecurePass123@cluster0.abc12.mongodb.net/?retryWrites=true&w=majority
-MONGODB_DB_NAME=syncveil
+MONGO_URI=mongodb+srv://syncveil_user:MySecurePass123@cluster0.abc12.mongodb.net/?retryWrites=true&w=majority
+MONGO_DB_NAME=syncveil
 ```
+
+**For Railway Deployment:**
+
+1. Go to your Railway project dashboard
+2. Select your service
+3. Go to **Variables** tab
+4. Add:
+   ```
+   MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
+   MONGO_DB_NAME=syncveil
+   ```
 
 ### 8. Restart Your Server
 

@@ -9,16 +9,26 @@ dist/
 build/
 *.egg
 
+# Node.js
+node_modules/
+package-lock.json
+yarn.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Virtual Environment
 .venv/
 venv/
 ENV/
 env/
 
-# Environment variables
+# Environment variables - NEVER commit secrets
 .env
+.env.local
+.env.production
 
-# Database
+# Database files - local only
 *.db
 *.sqlite
 *.sqlite3
@@ -33,11 +43,31 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
 
-# Logs
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs - never commit
 *.log
+logs/
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Node (if ever added)
+node_modules/
+package-lock.json
+
+# Local development scripts
+start.sh
+start_frontend.sh
+check_backend.sh
+
+# MongoDB playground files
+playground-*.mongodb.js

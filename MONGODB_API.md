@@ -2,52 +2,61 @@
 
 ## Overview
 
-This project now includes MongoDB integration alongside the existing SQLite/PostgreSQL database. MongoDB is used for flexible, document-based storage suitable for unstructured or semi-structured data.
+This project includes MongoDB Atlas integration for flexible, document-based storage suitable for unstructured or semi-structured data.
 
-## Setup
+## Setup for Production (Railway)
 
-### 1. Install MongoDB (Optional)
+### 1. MongoDB Atlas Setup (Required)
 
-MongoDB is **optional** for this project. The application will run without it, but MongoDB endpoints will not work until MongoDB is started.
+MongoDB Atlas is the recommended cloud database for production deployment.
 
-#### For Local Development (Ubuntu/Debian):
-```bash
-# Install MongoDB
-sudo apt-get install -y mongodb
-
-# Start MongoDB
-sudo systemctl start mongodb
-
-# Check status
-sudo systemctl status mongodb
-```
-
-#### For Docker:
-```bash
-docker run -d -p 27017:27017 --name mongodb mongo:latest
-```
+1. Create a free account at https://www.mongodb.com/cloud/atlas/register
+2. Create a free M0 cluster (or use existing cluster)
+3. Create a database user with read/write permissions
+4. Whitelist your IP or allow access from anywhere (0.0.0.0/0)
+5. Get your connection string (mongodb+srv://...)
 
 ### 2. Configuration
 
-The MongoDB connection is configured in `.env`:
+Set the following environment variable in Railway:
 
 ```env
-MONGODB_URL=mongodb://localhost:27017
-MONGODB_DB_NAME=syncveil
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
+MONGO_DB_NAME=syncveil
 ```
+
+**Important:**
+- `MONGO_URI` must be a MongoDB Atlas connection string (mongodb+srv://)
+- Never use `mongodb://localhost` in production
+- The app will fail to start if MONGO_URI is invalid or unreachable
 
 ### 3. Dependencies
 
-MongoDB dependencies are already added to `requirements.txt`:
+MongoDB dependencies are included in `requirements.txt`:
 - `motor==3.3.2` - Async MongoDB driver
 - `pymongo==4.6.1` - MongoDB Python driver
+- `certifi` - SSL certificate validation
+
+## Local Development Setup (Optional)
+
+For local development, you can either:
+
+**Option A: Use MongoDB Atlas (Recommended)**
+```env
+MONGO_URI=mongodb+srv://your-atlas-connection-string
+MONGO_DB_NAME=syncveil_dev
+```
+
+**Option B: Skip MongoDB entirely**
+```env
+# Don't set MONGO_URI - app will work without MongoDB features
+```
 
 ## API Endpoints
 
 All MongoDB endpoints are prefixed with `/api/mongodb`
 
 ### Health & Status
-
 #### Check MongoDB Health
 ```http
 GET /api/mongodb/health

@@ -1,17 +1,41 @@
 #!/bin/bash
-# Start the SyncVeil backend server
+# SyncVeil Backend - Local Development Server
+# For production deployment, use Procfile (Railway automatically uses it)
 
-# Kill any existing uvicorn processes
-pkill -f uvicorn
-sleep 1
+set -e
+
+echo "🚀 Starting SyncVeil Backend (Development Mode)"
+echo ""
+
+# Check if virtual environment exists
+if [ ! -d ".venv" ]; then
+    echo "⚠️  Virtual environment not found. Creating one..."
+    python -m venv .venv
+    echo "✓ Virtual environment created"
+fi
 
 # Activate virtual environment
 source .venv/bin/activate
 
-echo "Starting SyncVeil Backend..."
-echo "API will be available at: http://localhost:8000"
-echo "API Docs: http://localhost:8000/docs"
+# Install/update dependencies
+echo "📦 Checking dependencies..."
+pip install -q -r requirements.txt
+echo "✓ Dependencies ready"
 echo ""
 
-# Run the server
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Get port from environment or default to 8000
+PORT=${PORT:-8000}
+
+echo "Configuration:"
+echo "  Host: 0.0.0.0"
+echo "  Port: $PORT"
+echo "  Reload: Enabled"
+echo ""
+echo "API Documentation: http://localhost:$PORT/docs"
+echo "Health Check: http://localhost:$PORT/health"
+echo ""
+echo "Press Ctrl+C to stop the server"
+echo "─────────────────────────────────────────"
+
+# Run the server with auto-reload for development
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port $PORT

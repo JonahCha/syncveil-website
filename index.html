@@ -2,118 +2,306 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>SyncVeil – Privacy & Encrypted Data Protection Platform</title>
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="SyncVeil is a privacy-first platform providing encrypted data vaults, identity protection, and real-time breach monitoring." />
-  <link rel="canonical" href="https://syncveil.software/" />
 
-  <!-- Open Graph -->
+  <!-- ================= SEO CORE ================= -->
+  <title>SyncVeil – Privacy & Encrypted Data Protection Platform</title>
+  <meta name="description" content="SyncVeil is a privacy-first platform offering encrypted data vaults, secure identity management, and real-time breach monitoring.">
+  <meta name="keywords" content="SyncVeil, data privacy, encrypted vault, secure storage, breach monitoring, identity protection">
+  <meta name="author" content="SyncVeil">
+  <link rel="canonical" href="https://syncveil.software/">
+
+  <!-- ================= OPEN GRAPH ================= -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="SyncVeil – Privacy That Empowers">
   <meta property="og:description" content="Encrypted data vaults, identity protection, and breach monitoring.">
   <meta property="og:url" content="https://syncveil.software/">
+  <meta property="og:site_name" content="SyncVeil">
 
-  <!-- Schema -->
+  <!-- ================= TWITTER ================= -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SyncVeil – Privacy That Empowers">
+  <meta name="twitter:description" content="Privacy-first encrypted data protection platform.">
+
+  <!-- ================= FAVICON ================= -->
+  <link rel="icon" href="https://cdn.jsdelivr.net/npm/lucide-static@0.344.0/icons/shield.svg" type="image/svg+xml">
+
+  <!-- ================= FONTS ================= -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&display=swap" rel="stylesheet">
+
+  <!-- ================= TAILWIND ================= -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- ================= ICONS ================= -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- ================= MAP ================= -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap/dist/css/jsvectormap.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@2.1.1/dist/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@2.1.1/dist/maps/world.js"></script>
+
+  <!-- ================= SCHEMA: ORGANIZATION ================= -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "SyncVeil",
     "url": "https://syncveil.software/",
-    "logo": "https://syncveil.software/logo.png"
+    "logo": "https://syncveil.software/logo.png",
+    "description": "Privacy-first encrypted data protection and identity management platform.",
+    "foundingDate": "2025",
+    "sameAs": [
+      "https://github.com/SyncVeil",
+      "https://www.linkedin.com/company/syncveil"
+    ]
   }
   </script>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rubik+Mono+One&display=swap" rel="stylesheet">
+  <!-- ================= SCHEMA: WEBSITE (BRAND SEARCH) ================= -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "SyncVeil",
+    "url": "https://syncveil.software/",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://syncveil.software/?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+
+  <!-- ================= SCHEMA: BREADCRUMB ================= -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [{
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://syncveil.software/"
+    }]
+  }
+  </script>
+
   <style>
     .org-name {
       font-family: 'Rubik Mono One', cursive;
     }
+    
+    :root {
+      --nav-height: 72px;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background: white;
+      color: #0f172a;
+    }
+
+    main#main-content {
+      flex: 1;
+    }
+
+    .view-section {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+      min-height: calc(100vh - var(--nav-height));
+      box-sizing: border-box;
+    }
+
+    .view-section.active {
+      display: block;
+      opacity: 1;
+      animation: fadeInUp 0.5s ease-out;
+    }
+
+    .dashboard-layout {
+      display: flex;
+      min-height: 100vh;
+      background-color: #f8fafc;
+    }
+
+    .dashboard-sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      background: white;
+      border-right: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease;
+      z-index: 40;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .dashboard-main {
+      flex: 1;
+      position: relative;
+      overflow-y: auto;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes float-delayed {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInRight {
+      from { opacity: 0; transform: translateX(20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .animate-float {
+      animation: float 6s ease-in-out infinite;
+    }
+
+    .animate-float-delayed {
+      animation: float-delayed 7s ease-in-out infinite 2s;
+    }
+
+    .animate-fade-in-up {
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+
+    .animate-fade-in-right {
+      animation: fadeInRight 0.8s ease-out forwards;
+    }
+
+    .bar-h-40 { height: 40%; }
+    .bar-h-45 { height: 45%; }
+    .bar-h-50 { height: 50%; }
+    .bar-h-60 { height: 60%; }
+    .bar-h-70 { height: 70%; }
+    .bar-h-80 { height: 80%; }
+    .bar-h-90 { height: 90%; }
+
+    .jvm-tooltip {
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+    }
+
+    #breach-map {
+      width: 100%;
+      height: auto;
+      background: transparent;
+      min-height: 400px;
+      max-height: 700px;
+    }
+
+    .map-gradient-overlay {
+      background: linear-gradient(to top, #f8fafc 10%, transparent 100%);
+      pointer-events: none;
+    }
+
+    #mobile-menu {
+      transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+
+    #mobile-menu.open {
+      max-height: 400px;
+      opacity: 1;
+    }
+
+    .view-center {
+      display: flex !important;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding-top: 2rem;
+      padding-bottom: 2rem;
+    }
+
+    .drop-zone {
+      transition: all 0.2s ease;
+    }
+
+    .drop-zone.dragover {
+      border-color: #4f46e5;
+      background-color: #eef2ff;
+    }
+
+    .dash-tab {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+    }
+
+    .dash-tab.active {
+      display: block;
+      opacity: 1;
+    }
+
+    .dash-nav-btn {
+      transition: all 0.2s ease;
+    }
+
+    .progress-bar {
+      transition: width 1.5s ease-in-out;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 260px;
+        height: 100vh;
+        transform: translateX(-100%);
+        z-index: 50;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .dashboard-sidebar:not(.hidden) {
+        transform: translateX(0);
+      }
+
+      .dashboard-main {
+        width: 100%;
+      }
+
+      #breach-map {
+        min-height: 300px;
+      }
+    }
   </style>
 </head>
 
-<body class="bg-white text-slate-900">
-
-<header class="border-b">
-  <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-    <a href="./app.html" class="text-2xl font-bold org-name">SyncVeil</a>
-    <nav class="flex flex-wrap gap-4 text-sm">
-      <a href="./app.html" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold">Open App</a>
-      <a href="./privacy-policy.html" class="text-slate-700 hover:text-indigo-600">Privacy</a>
-      <a href="./terms-of-service.html" class="text-slate-700 hover:text-indigo-600">Terms</a>
-      <a href="./cookie-policy.html" class="text-slate-700 hover:text-indigo-600">Cookies</a>
-    </nav>
-  </div>
-</header>
-
-<main class="max-w-5xl mx-auto px-6 py-20">
-  <!-- Hero Section -->
-  <section class="text-center mb-16">
-    <h1 class="text-5xl font-extrabold text-slate-900 mb-6">
-      Privacy that <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-teal-500">Empowers</span>
-    </h1>
-    <p class="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
-      SyncVeil gives you complete control over your digital footprint. Monitor, manage, and secure your data without compromising speed.
-    </p>
-    <div class="flex gap-4 justify-center flex-wrap">
-      <a href="./auth.html" class="bg-indigo-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-lg">
-        Get Started
-      </a>
-      <a href="./app.html" class="bg-slate-100 text-slate-700 px-8 py-3 rounded-lg font-bold hover:bg-slate-200 transition-colors">
-        View Demo
-      </a>
-    </div>
-  </section>
-
-  <!-- Features Grid -->
-  <section class="grid md:grid-cols-3 gap-8 mb-16">
-    <div class="text-center p-6">
-      <div class="w-16 h-16 bg-indigo-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-      </div>
-      <h3 class="text-xl font-bold text-slate-900 mb-2">Encrypted Vault</h3>
-      <p class="text-slate-600">Your files are encrypted client-side with AES-256 before upload.</p>
-    </div>
-    <div class="text-center p-6">
-      <div class="w-16 h-16 bg-teal-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      </div>
-      <h3 class="text-xl font-bold text-slate-900 mb-2">Identity Protection</h3>
-      <p class="text-slate-600">Keep your personal details safe from leaks and unauthorized access.</p>
-    </div>
-    <div class="text-center p-6">
-      <div class="w-16 h-16 bg-rose-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-        </svg>
-      </div>
-      <h3 class="text-xl font-bold text-slate-900 mb-2">Breach Monitor</h3>
-      <p class="text-slate-600">Real-time monitoring and alerts for potential data breaches.</p>
-    </div>
-  </section>
-</main>
-
-<footer class="border-t mt-20">
-  <div class="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm text-slate-600">
-    <div>© 2025 SyncVeil Inc.</div>
-    <nav class="flex flex-wrap gap-4">
-      <a href="./privacy-policy.html" class="hover:text-indigo-600">Privacy Policy</a>
-      <a href="./terms-of-service.html" class="hover:text-indigo-600">Terms of Service</a>
-      <a href="./cookie-policy.html" class="hover:text-indigo-600">Cookie Policy</a>
-      <a href="./app.html" class="hover:text-indigo-600">Open App</a>
-      <a href="./app.html" class="hover:text-indigo-600">Home</a>
-    </nav>
-  </div>
-</footer>
-
+<body class="bg-white text-slate-900 selection:bg-indigo-100 selection:text-indigo-900 overflow-x-hidden">
+  <div id="root"></div>
+  <script type="module" src="/src/index.jsx"></script>
 </body>
+
 </html>
