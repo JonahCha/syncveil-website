@@ -3,7 +3,7 @@
  * PRODUCTION: All authentication and dashboard data comes from real backend
  */
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from './config';
 
 class APIError extends Error {
   constructor(status, message, details = null) {

@@ -1,11 +1,8 @@
-import os
 import asyncio
-from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.auth import models  # noqa: F401 (ensure models are registered)
 from app.auth.routes import router as auth_router
@@ -16,12 +13,18 @@ from app.core.config import get_settings
 
 
 # ==========================
+# SETTINGS
+# ==========================
+settings = get_settings()
+
+
+# ==========================
 # LIFESPAN (Startup / Shutdown)
 # ==========================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Validate configuration (production-safe)
-    settings = get_settings()
+    # Settings already loaded globally to avoid repeated reads
 
     # MongoDB connection (non-blocking)
     if settings.MONGO_URI:
@@ -61,37 +64,23 @@ app = FastAPI(
 # ==========================
 # CORS
 # ==========================
-allowed_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+base_origins = settings.cors_origins_list
+
+if base_origins == ["*"]:
+    allowed_origins = ["*"]
+else:
+    allowed_origins = set(base_origins)
+    if settings.FRONTEND_URL:
+        allowed_origins.add(settings.FRONTEND_URL.rstrip("/"))
+    allowed_origins.add("http://localhost:5173")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in allowed_origins if o.strip()],
+    allow_origins=list(allowed_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# ==========================
-# STATIC FRONTEND (MUST BE FIRST)
-# ==========================
-serve_static = os.getenv("SERVE_STATIC_FRONTEND", "").lower() == "true"
-
-if serve_static:
-    dist_dir = Path(__file__).parent.parent / "dist"
-    index_file = dist_dir / "index.html"
-
-    if dist_dir.exists() and index_file.exists():
-        print(f"📁 Serving static frontend from: {dist_dir}")
-        app.mount(
-            "/",
-            StaticFiles(directory=str(dist_dir), html=True),
-            name="static",
-        )
-    else:
-        print("⚠️  dist/ not found — running API-only mode")
-else:
-    print("ℹ️  Static file serving disabled (API-only mode)")
 
 
 # ==========================
@@ -103,7 +92,7 @@ def health():
 
 
 # ==========================
-# API ROUTES (AFTER STATIC)
+# API ROUTES
 # ==========================
 app.include_router(auth_router, prefix="/auth")
 app.include_router(dashboard_router)

@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: syncveil-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENV
+        value: production
+      - key: CORS_ORIGINS
+        value: https://frontend.onrender.com
+      - key: FRONTEND_URL
+        value: https://frontend.onrender.com
+      - key: JWT_SECRET
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: MONGO_DB_NAME
+        value: syncveil
+      - key: LOG_LEVEL
+        value: INFO
+
+  - type: static
+    name: syncveil-frontend
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://syncveil-backend.onrender.com

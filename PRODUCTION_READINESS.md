@@ -229,12 +229,12 @@ JWT_SECRET=dev-secret-...  # PRODUCTION: Use strong random key
 - [ ] **Security**
   - [ ] `JWT_SECRET` changed to 32+ character random string
   - [ ] `PASSWORD_HASH_*` costs configured for production
-  - [ ] HTTPS enforced (Railway auto-enables)
+  - [ ] HTTPS enforced (Render auto-enables)
   - [ ] CORS_ORIGINS restricted to your domain
   - [ ] `.env` secrets never committed to Git
 
 - [ ] **Frontend Configuration**
-  - [ ] `REACT_APP_API_URL` set to production backend
+  - [ ] `VITE_API_URL` set to production backend
   - [ ] Build optimized: `npm run build`
   - [ ] No console.log() calls in production code
   - [ ] Error handling comprehensive
