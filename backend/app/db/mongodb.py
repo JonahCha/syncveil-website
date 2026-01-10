@@ -46,7 +46,7 @@ def _validate_mongo_uri() -> None:
         )
 
     if "localhost" in settings.MONGO_URI or "127.0.0.1" in settings.MONGO_URI:
-        print("⚠️  WARNING: Using localhost MongoDB connection. This will not work on Railway.")
+        print("⚠️  WARNING: Using localhost MongoDB connection. This will not work in cloud hosting.")
         print("   Please use MongoDB Atlas (mongodb+srv://) for production deployment.")
 
 

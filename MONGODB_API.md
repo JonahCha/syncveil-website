@@ -4,7 +4,7 @@
 
 This project includes MongoDB Atlas integration for flexible, document-based storage suitable for unstructured or semi-structured data.
 
-## Setup for Production (Railway)
+## Setup for Production (Render)
 
 ### 1. MongoDB Atlas Setup (Required)
 
@@ -18,7 +18,7 @@ MongoDB Atlas is the recommended cloud database for production deployment.
 
 ### 2. Configuration
 
-Set the following environment variable in Railway:
+Set the following environment variable in Render:
 
 ```env
 MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority

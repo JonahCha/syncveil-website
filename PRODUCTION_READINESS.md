@@ -335,7 +335,7 @@ Authorization: Bearer <access_token>
 
 ### Production Hardening
 - Use strong JWT_SECRET (32+ chars)
-- Configure HTTPS/SSL (Railway does this)
+- Configure HTTPS/SSL (automatic on Render)
 - Set restrictive CORS_ORIGINS
 - Enable rate limiting for auth endpoints
 - Monitor for suspicious login patterns
@@ -394,7 +394,7 @@ npm run dev
 ### Production Testing
 
 ```bash
-# Deploy to Railway
+# Deploy to production
 git push origin main
 
 # Test signup
@@ -407,9 +407,9 @@ git push origin main
 
 ---
 
-## Deployment to Railway
+## Deployment to Production
 
-**No changes needed** - Railway auto-detects configuration from:
+**No changes needed** - Render auto-detects configuration from:
 - `package.json` (scripts: build, dev)
 - `requirements.txt` (Python dependencies)
 - `Procfile` (if provided)
@@ -454,7 +454,7 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
 - Proper error handling and user feedback
 - Security best practices implemented
 
-**Ready for deployment to Railway or any Node.js/Python hosting.**
+**Ready for deployment to Render or any Node.js/Python hosting.**
 
 ---
 

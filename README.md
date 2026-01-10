@@ -2,22 +2,20 @@
 
 **Privacy-First Security Platform** — Modern authentication, encrypted data storage, and user-centric privacy tools.
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template)
-
 ---
 
 ## 🚀 Quick Start
 
-### Production Deployment (Railway)
+### Production Deployment (Render)
 
 1. **Fork this repository**
-2. **Deploy to Railway**
+2. **Deploy to Render**
    - Connect your GitHub repository
-   - Railway auto-detects Python and uses `Procfile`
+   - Render uses `render.yaml` for configuration
 3. **Set Environment Variables** (see [Configuration](#configuration))
 4. **Deploy!**
 
-View your app at: `https://your-app.railway.app`
+View your app at: `https://syncveil-backend.onrender.com`
 
 ### Local Development
 
@@ -94,35 +92,32 @@ See [.env.example](.env.example) for complete configuration options.
 SyncVeil
 ├── FastAPI Backend (Python)
 │   ├── JWT Authentication
-│   ├── PostgreSQL (User data)
-│   ├── MongoDB Atlas (NoSQL features)
-│   ├── Redis (Sessions/Rate limiting)
+│   ├── MongoDB Atlas (NoSQL data storage)
 │   └── Brevo (Email)
-├── Static Frontend (HTML/CSS/JS)
-│   └── Served by FastAPI
-└── Railway Deployment
+├── React Frontend (Vite)
+│   └── Static site on Render
+└── Render Deployment
     ├── Automatic HTTPS
     ├── Environment variables
-    └── Procfile configuration
+    └── render.yaml configuration
 ```
 
 ### Tech Stack
 
-- **Backend**: FastAPI, SQLAlchemy, Motor (MongoDB)
-- **Database**: PostgreSQL, MongoDB Atlas
-- **Cache**: Redis
+- **Backend**: FastAPI, Motor (MongoDB)
+- **Database**: MongoDB Atlas
 - **Auth**: JWT, Argon2 password hashing
 - **Email**: Brevo (Transactional API)
-- **Deployment**: Railway
+- **Deployment**: Render
 
 ---
 
 ## 📚 API Documentation
 
 Once deployed, visit:
-- **Interactive Docs**: `https://your-app.railway.app/docs`
-- **Alternative Docs**: `https://your-app.railway.app/redoc`
-- **Health Check**: `https://your-app.railway.app/health`
+- **Interactive Docs**: `https://syncveil-backend.onrender.com/docs`
+- **Alternative Docs**: `https://syncveil-backend.onrender.com/redoc`
+- **Health Check**: `https://syncveil-backend.onrender.com/health`
 
 ### Key Endpoints
 
@@ -171,15 +166,15 @@ syncveil-website/
 # Run backend tests
 python test_backend.py
 
-# Test specific endpoint
-curl https://your-app.railway.app/health
+# Test health endpoint
+curl https://syncveil-backend.onrender.com/health
 ```
 
 ---
 
 ## 📖 Documentation
 
-- [Railway Deployment Guide](RAILWAY_DEPLOYMENT.md)
+- [Deployment Guide](DEPLOYMENT_GUIDE.md)
 - [MongoDB Atlas Setup](MONGODB_ATLAS_SETUP.md)
 - [MongoDB API Documentation](MONGODB_API.md)
 

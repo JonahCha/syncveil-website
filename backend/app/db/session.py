@@ -1,7 +1,7 @@
 """
 Legacy SQL session management placeholder.
 
-Production deployment on Railway uses MongoDB only. SQL connections are
+Production deployment uses MongoDB only. SQL connections are
 intentionally disabled unless explicitly configured for non-production use.
 """
 import os

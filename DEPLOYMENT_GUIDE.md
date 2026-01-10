@@ -2,7 +2,7 @@
 
 ## Overview
 
-The SyncVeil frontend has been successfully migrated to React with Vite. This guide covers deploying the React frontend to Railway or any Node.js compatible environment.
+The SyncVeil frontend has been successfully migrated to React with Vite. This guide covers deploying the React frontend to production environments (Render, Vercel, Netlify, or any Node.js compatible hosting).
 
 ## Project Status
 
@@ -45,8 +45,7 @@ The SyncVeil frontend has been successfully migrated to React with Vite. This gu
 ## Prerequisites
 
 - Node.js 18+ and npm
-- Git account (for Railway integration)
-- Railway account (for deployment)
+- Git account
 
 ## Local Development
 
@@ -74,61 +73,40 @@ npm run preview
 ```
 Preview at `http://localhost:4173` (simulates production environment).
 
-## Railway Deployment
+## Production Deployment
 
-### Method 1: Direct Repository Deployment (Recommended)
+The SyncVeil frontend uses Render's static site hosting. See [render.yaml](render.yaml) for the current configuration.
 
-#### Step 1: Connect Repository
-1. Go to [Railway Dashboard](https://railway.app)
-2. Click "New Project" → "Deploy from GitHub"
-3. Select the SyncVeil repository
-4. Railway auto-detects Node.js project
+### Render Configuration
 
-#### Step 2: Configure Build Settings
-In Railway project settings:
-- **Build Command**: `npm install && npm run build`
-- **Start Command**: `npm run preview -- --host 0.0.0.0`
-- **Root Directory**: `/` (or empty)
+The frontend is configured in `render.yaml` as a static site:
 
-#### Step 3: Environment Variables
-No special variables needed for frontend. If backend API is separate, add:
+```yaml
+- type: static
+  name: syncveil-frontend
+  rootDir: frontend
+  buildCommand: npm install && npm run build
+  staticPublishPath: dist
+  envVars:
+    - key: VITE_API_URL
+      value: https://syncveil-backend.onrender.com
+  routes:
+    - type: rewrite
+      source: /*
+      destination: /index.html
+```
+
+### Environment Variables
+
+If backend API is hosted separately, configure:
 ```
 VITE_API_URL=https://your-api-domain.com
 ```
 
 Update component code to use:
 ```javascript
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.syncveil.software'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 ```
-
-#### Step 4: Deploy
-Click "Deploy" in Railway dashboard. Railway will:
-1. Clone repository
-2. Run build command: `npm install && npm run build`
-3. Create `dist/` folder with optimized assets
-4. Start preview server on assigned port
-
-### Method 2: Docker Deployment (For Advanced Setup)
-
-Create `Dockerfile`:
-```dockerfile
-FROM node:20-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci
-
-COPY . .
-
-RUN npm run build
-
-EXPOSE 4173
-
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "4173"]
-```
-
-Then push to Railway with this Dockerfile.
 
 ## Configuration
 
@@ -149,7 +127,7 @@ Already optimized for production with:
 
 After deployment, verify:
 
-- [ ] **Home Page Loads**: Check `https://your-railway-domain.com`
+- [ ] **Home Page Loads**: Check your production domain
 - [ ] **Navigation Works**: Click all nav items
 - [ ] **Login/Signup Tab Visible**: AuthChoice component renders
 - [ ] **Map Loads**: BreachMap displays world map on Home
@@ -174,11 +152,10 @@ Current optimizations:
 ## Monitoring & Logs
 
 ### View Deployment Logs
-In Railway dashboard:
-1. Select project
-2. Go to "Deployments" tab
-3. Click latest deployment
-4. View build and runtime logs
+Check your hosting platform's dashboard for:
+1. Build logs
+2. Deployment status
+3. Runtime logs
 
 ### Common Issues
 
@@ -186,9 +163,9 @@ In Railway dashboard:
 - Solution: Ensure all dependencies in package.json
 - Check: `npm install` locally first
 
-**Issue: App fails to start on Railway**
-- Solution: Check start command uses `--host 0.0.0.0`
-- Verify: PORT is read from $PORT environment variable
+**Issue: App fails to start in production**
+- Solution: Check hosting platform build and start commands
+- Verify: Environment variables are properly configured
 
 **Issue: Assets return 404**
 - Solution: Check asset file paths in dist/
@@ -200,11 +177,10 @@ In Railway dashboard:
 
 ## Rollback
 
-To rollback to previous version in Railway:
-1. Go to Deployments tab
-2. Find previous successful deployment
-3. Click "Redeploy"
-4. Confirm
+To rollback to a previous version:
+1. Access your hosting platform's deployment history
+2. Find the previous successful deployment
+3. Trigger a redeployment
 
 ## Scaling
 
@@ -227,7 +203,7 @@ The React frontend is static once built:
 
 - **Vite Docs**: https://vitejs.dev
 - **React Docs**: https://react.dev
-- **Railway Docs**: https://docs.railway.app
+- **Render Docs**: https://render.com/docs
 - **Tailwind CSS**: https://tailwindcss.com
 
 ## Security Notes
@@ -249,4 +225,4 @@ The React frontend is static once built:
 
 ## Summary
 
-The SyncVeil frontend is now a production-ready React application. All original UI/UX preserved, optimized with Vite, and ready for Railway deployment. Follow the Railway deployment steps above to go live.
+The SyncVeil frontend is now a production-ready React application. All original UI/UX preserved, optimized with Vite, and deployed on Render. See render.yaml for the current configuration.

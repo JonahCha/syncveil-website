@@ -160,18 +160,16 @@ The Dashboard's Vault tab demonstrates file upload with:
 
 ## Deployment
 
-### Railway Deployment
-
-The build is optimized for Railway with:
+The build is optimized for production with:
 - Production build in `dist/` folder
 - All assets properly bundled
 - No external API dependencies in frontend
-- Runs on any static hosting
+- Runs on static hosting (Render, Vercel, Netlify)
 
-**For Railway:**
-1. Set build command: `npm run build`
-2. Set start command: `npm run preview -- --host 0.0.0.0`
-3. Configure PORT environment variable
+**Deployment Configuration:**
+- See `render.yaml` for current Render configuration
+- Build command: `npm run build`
+- Output directory: `dist`
 
 ### Environment Variables
 

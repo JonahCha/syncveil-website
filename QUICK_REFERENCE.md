@@ -80,17 +80,18 @@ const [isAuthenticated, setIsAuthenticated] = useState(false);
 }
 ```
 
-## 🚢 Deployment (Railway)
+## 🚢 Deployment (Render)
 
 ```bash
 # Build command
 npm install && npm run build
 
-# Start command
-npm run preview -- --host 0.0.0.0
+# Deployment configured in render.yaml
+# Backend: https://syncveil-backend.onrender.com
+# Frontend: https://syncveil-frontend.onrender.com
 
 # Environment variables
-# None required for frontend
+# VITE_API_URL configured in render.yaml
 ```
 
 ## 🐛 Troubleshooting
@@ -146,7 +147,7 @@ dist/
 ## 📚 Documentation
 
 - **[REACT_FRONTEND.md](REACT_FRONTEND.md)** - Full guide
-- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Railway setup
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Production deployment
 - **[MIGRATION_VERIFICATION.md](MIGRATION_VERIFICATION.md)** - Completion report
 - **[REACT_MIGRATION_COMPLETE.md](REACT_MIGRATION_COMPLETE.md)** - Overview
 
@@ -194,7 +195,7 @@ return <button onClick={handleClick}>Click</button>;
 | Vite Docs | https://vitejs.dev |
 | React Docs | https://react.dev |
 | Tailwind | https://tailwindcss.com |
-| Railway | https://railway.app |
+| Render | https://render.com/docs |
 | Lucide Icons | https://lucide.dev |
 
 ## ✅ Pre-Deployment Checklist
@@ -223,7 +224,7 @@ git push                   # Push to GitHub
 - [ ] No secrets in environment
 - [ ] No console.log() in production
 - [ ] Input validation present
-- [ ] HTTPS enforced (Railway)
+- [ ] HTTPS enforced (automatic on Render)
 - [ ] CORS configured (backend)
 
 ---
