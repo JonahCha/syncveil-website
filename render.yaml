@@ -21,8 +21,9 @@ services:
       - key: LOG_LEVEL
         value: INFO
 
-  - type: static
+  - type: web
     name: syncveil-website
+    runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
