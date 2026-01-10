@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     # ======================
     # CORS
     # ======================
-    CORS_ORIGINS: str = Field(default="http://localhost:5173", env="CORS_ORIGINS")
+    CORS_ORIGINS: str = Field(default="", env="CORS_ORIGINS")
 
     # ======================
     # Admin

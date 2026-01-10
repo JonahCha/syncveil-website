@@ -72,6 +72,7 @@ else:
     allowed_origins = set(base_origins)
     if settings.FRONTEND_URL:
         allowed_origins.add(settings.FRONTEND_URL.rstrip("/"))
+    # Local development only - allows frontend dev server access
     allowed_origins.add("http://localhost:5173")
 
 app.add_middleware(
