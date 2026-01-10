@@ -9,9 +9,9 @@ services:
       - key: ENV
         value: production
       - key: CORS_ORIGINS
-        value: https://frontend.onrender.com
+        value: https://syncveil-website.onrender.com
       - key: FRONTEND_URL
-        value: https://frontend.onrender.com
+        value: https://syncveil-website.onrender.com
       - key: JWT_SECRET
         sync: false
       - key: MONGO_URI
@@ -22,7 +22,7 @@ services:
         value: INFO
 
   - type: static
-    name: syncveil-frontend
+    name: syncveil-website
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
