@@ -62,22 +62,33 @@ app = FastAPI(
 
 
 # ==========================
-# CORS
+# CORS (STRICT & CORRECT)
 # ==========================
-base_origins = settings.cors_origins_list
+origins: list[str] = []
 
-if base_origins == ["*"]:
-    allowed_origins = ["*"]
-else:
-    allowed_origins = set(base_origins)
-    if settings.FRONTEND_URL:
-        allowed_origins.add(settings.FRONTEND_URL.rstrip("/"))
-    # Local development only - allows frontend dev server access
-    allowed_origins.add("http://localhost:5173")
+# 1. Explicit CORS_ORIGINS (comma-separated)
+if settings.CORS_ORIGINS:
+    origins.extend(
+        [o.rstrip("/") for o in settings.cors_origins_list if o != "*"]
+    )
+
+# 2. Explicit FRONTEND_URL
+if settings.FRONTEND_URL:
+    origins.append(settings.FRONTEND_URL.rstrip("/"))
+
+# 3. Local dev ONLY
+if not settings.is_production:
+    origins.append("http://localhost:5173")
+
+# 4. Production safety check
+if settings.is_production and not origins:
+    raise RuntimeError(
+        "❌ CORS misconfigured: no allowed origins in production"
+    )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list(allowed_origins),
+    allow_origins=list(set(origins)),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
