@@ -20,28 +20,59 @@ export const authAPI = {
    * Sign up with real email and password
    * CRITICAL: Must verify email before first login
    */
-  signup: async (email, password, fullName) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email.toLowerCase().trim(),
-          password,
-        }),
-      });
+  signup: async (email, password) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000); // 30s cold-start safe
 
-      const data = await response.json();
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        email: email.toLowerCase().trim(),
+        password,
+      }),
+    });
 
-      if (!response.ok) {
-        throw new APIError(
-          response.status,
-          data.detail || 'Signup failed',
-          data
-        );
-      }
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new APIError(
+        response.status,
+        data.detail || 'Signup failed',
+        data
+      );
+    }
+
+    if (data.access_token) {
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token || '');
+      localStorage.setItem('user_id', data.user?.id || '');
+      localStorage.setItem('user_email', data.user?.email || '');
+    }
+
+    return {
+      success: true,
+      user: data.user,
+      requiresVerification: !data.user?.email_verified,
+      verificationToken: data.verification_token,
+    };
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new APIError(504, 'Backend timeout (cold start on Render)');
+    }
+
+    if (error instanceof APIError) throw error;
+
+    throw new APIError(500, 'Network error during signup');
+  } finally {
+    clearTimeout(timeout);
+  }
+},
+
 
       // Store tokens securely (httpOnly cookies preferred, but using localStorage for demo)
       if (data.access_token) {
