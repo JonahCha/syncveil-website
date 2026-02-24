@@ -28,16 +28,25 @@ def _serialize_user(user: User) -> dict:
 
 
 def _issue_tokens(db: Session, user: User) -> dict:
-    access_token = create_access_token(str(user.id), {"email": user.email})
-    refresh_token = create_refresh_token(str(user.id), {"email": user.email})
-    token_record = RefreshToken(
+    # Create a new session record
+    session = RefreshToken(
         user_id=user.id,
-        refresh_token_hash=hash_token(refresh_token),
+        refresh_token_hash="",  # Will be updated below
         expires_at=datetime.utcnow() + timedelta(days=REFRESH_EXPIRES_DAYS),
         last_used_at=datetime.utcnow(),
     )
-    db.add(token_record)
+    db.add(session)
+    db.flush()  # Get the session ID without committing
+    
+    # Create tokens with session_id
+    session_id = str(session.id)
+    access_token = create_access_token(str(user.id), session_id, {"email": user.email})
+    refresh_token = create_refresh_token(str(user.id), session_id, {"email": user.email})
+    
+    # Update session with refresh token hash
+    session.refresh_token_hash = hash_token(refresh_token)
     db.commit()
+    
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,

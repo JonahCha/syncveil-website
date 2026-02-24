@@ -26,6 +26,17 @@ async def lifespan(app: FastAPI):
     # Validate configuration (production-safe)
     # Settings already loaded globally to avoid repeated reads
 
+    # Create SQL tables if not already present (safety net for first deploy)
+    try:
+        from app.db.session import engine
+        from app.db.base import Base
+        Base.metadata.create_all(bind=engine)
+        print("✅ SQL tables ensured (created if missing)")
+    except Exception as e:
+        print(f"⚠️  SQL table creation check failed: {e}")
+        if settings.is_production:
+            raise RuntimeError(f"Database initialization failed: {e}")
+
     # MongoDB connection (non-blocking)
     if settings.MONGO_URI:
         print("🔌 Attempting MongoDB Atlas connection...")

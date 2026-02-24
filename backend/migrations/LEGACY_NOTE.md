@@ -1,18 +1,27 @@
-# Legacy SQL Artifacts
+# SQL Migration Notes
 
-This directory contains Alembic migration files from an earlier version of SyncVeil that used a SQL database (PostgreSQL/SQLite).
+This directory contains Alembic migration files for SyncVeil's SQL database schema.
 
 **Current Status:**
-- SyncVeil now uses **MongoDB** for all data storage
-- These Alembic files are **not used** in production
-- They are kept for historical reference only
+- SyncVeil uses **both PostgreSQL + MongoDB** for data storage
+- PostgreSQL: User authentication, sessions, OTP, and audit logs
+- MongoDB: OTP storage, feature data, breach monitoring
+- Alembic migrations ARE used for the PostgreSQL schema
 
-**Do NOT:**
-- Run these migrations against the production database
-- Reintroduce SQL dependencies
-- Assume SQL database support exists
+**Database Architecture:**
+- **PostgreSQL** (via `DATABASE_URL`): Core auth tables (users, sessions, otp_attempts, email_verifications, login_logs)
+- **MongoDB Atlas** (via `MONGO_URI`): OTP documents, feature data, breach data
 
-**Current Database:**
-- MongoDB Atlas (see `backend/app/db/mongodb.py`)
-- MongoDB models (see `backend/app/mongodb/models.py`)
-- No SQL database required
+**Running Migrations:**
+```bash
+cd backend
+alembic upgrade head
+```
+
+> On Render, this runs automatically via the `preDeployCommand` in `render.yaml`.
+
+**When to create new migrations:**
+```bash
+alembic revision --autogenerate -m "description of change"
+alembic upgrade head
+```
