@@ -18,9 +18,9 @@ services:
       - key: ENV
         value: production
       - key: CORS_ORIGINS
-        value: https://syncveil-website.onrender.com
+        value: https://syncveil.software,https://www.syncveil.software,https://syncveil-website.onrender.com
       - key: FRONTEND_URL
-        value: https://syncveil-website.onrender.com
+        value: https://syncveil.software
       
       # PostgreSQL Database (REQUIRED)
       - key: DATABASE_URL

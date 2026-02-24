@@ -29,9 +29,19 @@ async def lifespan(app: FastAPI):
     # Create SQL tables if not already present (safety net for first deploy)
     try:
         from app.db.session import engine
-        from app.db.base import Base
-        Base.metadata.create_all(bind=engine)
-        print("✅ SQL tables ensured (created if missing)")
+        if engine is not None:
+            from app.db.base import Base
+            Base.metadata.create_all(bind=engine)
+            print("✅ SQL tables ensured (created if missing)")
+        else:
+            print("⚠️  DATABASE_URL not set — skipping SQL table creation")
+            if settings.is_production:
+                raise RuntimeError(
+                    "DATABASE_URL is required in production. "
+                    "Add it as an environment variable in Render."
+                )
+    except RuntimeError:
+        raise
     except Exception as e:
         print(f"⚠️  SQL table creation check failed: {e}")
         if settings.is_production:
