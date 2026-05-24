@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Lock, Shield, Eye, Settings, LogOut, Menu } from 'lucide-react';
 import { dashboardAPI } from '../../api';
 
@@ -9,6 +9,7 @@ export default function Dashboard({ onLogout, onSwitchView, user }) {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Load dashboard data on mount
   useEffect(() => {
@@ -49,12 +50,7 @@ export default function Dashboard({ onLogout, onSwitchView, user }) {
     }
   }, [activeTab]);
 
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const files = Array.from(e.dataTransfer.files);
-    
+  const processFiles = async (files) => {
     // Upload each file
     for (const file of files) {
       const fileId = Math.random().toString(36).substr(2, 9);
@@ -108,6 +104,19 @@ export default function Dashboard({ onLogout, onSwitchView, user }) {
         );
       }
     }
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = Array.from(e.dataTransfer.files || []);
+    await processFiles(files);
+  };
+
+  const handleFileSelection = async (e) => {
+    const files = Array.from(e.target.files || []);
+    await processFiles(files);
+    e.target.value = '';
   };
 
   const handleDragOver = (e) => {
@@ -278,7 +287,15 @@ export default function Dashboard({ onLogout, onSwitchView, user }) {
                     className="drop-zone rounded-2xl p-12 text-center cursor-pointer border-2 border-dashed border-slate-300 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50 transition-colors"
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
+                    onClick={() => fileInputRef.current?.click()}
                   >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      multiple
+                      onChange={handleFileSelection}
+                    />
                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 text-slate-400">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                       <polyline points="17 8 12 3 7 8"/>

@@ -1,25 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 
 export default function BreachMap() {
-  let mapInstance = null;
-
-  useEffect(() => {
-    if (typeof window.jsVectorMap === 'undefined') {
-      // Load jsVectorMap dynamically
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/jsvectormap@2.1.1/dist/index.min.js';
-      script.onload = initMap;
-      document.head.appendChild(script);
-    } else {
-      initMap();
-    }
-
-    return () => {
-      if (mapInstance && typeof mapInstance.destroy === 'function') {
-        mapInstance.destroy();
-      }
-    };
-  }, []);
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const resizeHandlerRef = useRef(null);
 
   const countryCodes = ["AF","AL","DZ","AO","AR","AM","AU","AT","AZ","BS","BD","BY","BE","BZ","BJ","BT","BO","BA","BW","BR","BN","BG","BF","BI","KH","CM","CA","CV","CF","CD","CG","CR","CI","HR","CU","CY","CZ","DK","DJ","DO","EC","EG","SV","GQ","ER","EE","ET","FK","FJ","FI","FR","GA","GM","GE","DE","GH","GR","GL","GT","GN","GW","GY","HT","HN","HK","HU","IS","IN","ID","IR","IQ","IE","IL","IT","JM","JP","JO","KZ","KE","KP","KR","KW","KG","LA","LV","LB","LS","LR","LY","LT","LU","MK","MG","MW","MY","MV","ML","MT","MR","MU","MX","MD","MN","ME","MA","MZ","MM","NA","NP","NL","NC","NZ","NI","NE","NG","NO","OM","PK","PA","PG","PY","PE","PH","PL","PT","PR","QA","XK","RO","RU","RW","SA","SN","RS","SL","SG","SK","SI","SB","SO","ZA","SS","ES","LK","SD","SR","SZ","SE","CH","SY","TW","TJ","TZ","TH","TL","TG","TT","TN","TR","TM","UG","UA","AE","GB","US","UY","UZ","VU","VE","VN","YE","ZM","ZW"];
 
@@ -37,22 +21,29 @@ export default function BreachMap() {
     "IR": { score: 80, label: "Targeted Attacks" }
   };
 
-  const breachData = {};
-  countryCodes.forEach(code => {
-    if (highRiskTargets[code]) {
-      breachData[code] = highRiskTargets[code].score;
-    } else {
-      breachData[code] = Math.floor(Math.random() * 40) + 10;
-    }
-  });
+  const breachData = useMemo(() => {
+    const values = {};
+    countryCodes.forEach((code) => {
+      if (highRiskTargets[code]) {
+        values[code] = highRiskTargets[code].score;
+      } else {
+        values[code] = Math.floor(Math.random() * 40) + 10;
+      }
+    });
+    return values;
+  }, []);
 
   const initMap = () => {
-    const mapEl = document.getElementById('breach-map');
+    const mapEl = mapContainerRef.current;
     if (!mapEl || typeof window.jsVectorMap === 'undefined') return;
 
     try {
+      if (mapInstanceRef.current && typeof mapInstanceRef.current.destroy === 'function') {
+        mapInstanceRef.current.destroy();
+      }
+
       mapEl.innerHTML = '';
-      mapInstance = new window.jsVectorMap({
+      mapInstanceRef.current = new window.jsVectorMap({
         selector: '#breach-map',
         map: 'world',
         backgroundColor: 'transparent',
@@ -81,22 +72,41 @@ export default function BreachMap() {
           tooltip.text(content, true);
         }
       });
-
-      window.addEventListener('resize', () => {
-        if (mapInstance && typeof mapInstance.updateSize === 'function') {
-          mapInstance.updateSize();
-        }
-      });
     } catch (error) {
       console.warn('Map initialization failed:', error);
     }
   };
 
+  useEffect(() => {
+    if (typeof window.jsVectorMap === 'undefined') {
+      console.warn('jsVectorMap not loaded; skipping map initialization.');
+      return undefined;
+    }
+
+    initMap();
+    resizeHandlerRef.current = () => {
+      if (mapInstanceRef.current && typeof mapInstanceRef.current.updateSize === 'function') {
+        mapInstanceRef.current.updateSize();
+      }
+    };
+    window.addEventListener('resize', resizeHandlerRef.current);
+
+    return () => {
+      if (resizeHandlerRef.current) {
+        window.removeEventListener('resize', resizeHandlerRef.current);
+      }
+      if (mapInstanceRef.current && typeof mapInstanceRef.current.destroy === 'function') {
+        mapInstanceRef.current.destroy();
+      }
+      mapInstanceRef.current = null;
+    };
+  }, [breachData]);
+
   return (
     <div className="space-y-8">
       <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-lg">
         <div className="map-gradient-overlay absolute inset-0 pointer-events-none z-10"></div>
-        <div id="breach-map" className="w-full h-96 md:h-[500px]"></div>
+        <div ref={mapContainerRef} id="breach-map" className="w-full h-96 md:h-[500px]"></div>
       </div>
       
       <div className="grid md:grid-cols-3 gap-6">

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
-from app.auth.service import login_user, register_user, verify_email
+from app.auth.service import login_user, register_user, resend_verification_code, verify_email
 from app.db.session import get_db
 
 router = APIRouter(tags=["auth"])
@@ -20,6 +20,10 @@ class LoginRequest(BaseModel):
     password: Annotated[str, Field(min_length=8)]
 
 
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 @router.post("/signup")
 def signup(payload: SignupRequest, db: Session = Depends(get_db)):
     return register_user(db, payload.email, payload.password)
@@ -33,3 +37,8 @@ def verify(token: str, db: Session = Depends(get_db)):
 @router.post("/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     return login_user(db, payload.email, payload.password)
+
+
+@router.post("/resend-verification")
+def resend_verification(payload: ResendVerificationRequest, db: Session = Depends(get_db)):
+    return resend_verification_code(db, payload.email)

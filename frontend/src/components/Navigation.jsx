@@ -28,15 +28,15 @@ export default function Navigation({ onSwitchView, onScrollToSection }) {
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            <a 
-              href="javascript:void(0)" 
+            <button
+              type="button"
               onClick={() => onSwitchView('home')}
               className="text-slate-600 hover:text-indigo-600 font-medium transition-colors text-sm"
             >
               Product
-            </a>
-            <a 
-              href="javascript:void(0)" 
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 onSwitchView('home');
                 setTimeout(() => {
@@ -47,13 +47,14 @@ export default function Navigation({ onSwitchView, onScrollToSection }) {
               className="text-slate-600 hover:text-indigo-600 font-medium transition-colors text-sm"
             >
               Breach News
-            </a>
-            <a 
-              href="./auth.html"
+            </button>
+            <button
+              type="button"
+              onClick={() => onSwitchView('auth-choice')}
               className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors text-sm"
             >
               Sign In
-            </a>
+            </button>
           </div>
 
           <button 
@@ -67,15 +68,15 @@ export default function Navigation({ onSwitchView, onScrollToSection }) {
 
         {mobileMenuOpen && (
           <div id="mobile-menu" className="open px-4 pt-2 pb-6 space-y-2 md:hidden">
-            <a 
-              href="javascript:void(0)" 
+            <button
+              type="button"
               onClick={() => handleNavClick(() => onSwitchView('home'))}
-              className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg"
+              className="block w-full text-left px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg"
             >
               Product
-            </a>
-            <a 
-              href="javascript:void(0)" 
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 handleNavClick(() => {
                   onSwitchView('home');
@@ -85,16 +86,17 @@ export default function Navigation({ onSwitchView, onScrollToSection }) {
                   }, 100);
                 });
               }}
-              className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg"
+              className="block w-full text-left px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg"
             >
               Breach News
-            </a>
-            <a 
-              href="./auth.html"
-              className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg"
+            </button>
+            <button
+              type="button"
+              onClick={() => handleNavClick(() => onSwitchView('auth-choice'))}
+              className="block w-full text-left px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg"
             >
               Sign In
-            </a>
+            </button>
           </div>
         )}
       </div>

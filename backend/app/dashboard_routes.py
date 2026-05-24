@@ -24,15 +24,14 @@ def get_current_user(authorization: str = Header(None), db: Session = Depends(ge
         )
     
     # Token should be passed in Authorization header as "Bearer <token>"
-    if not authorization.startswith("Bearer "):
+    scheme, _, token = authorization.partition(" ")
+    if scheme != "Bearer" or not token.strip():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token format",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # Extract and verify token
-    token = authorization.split(" ")[1]
+    token = token.strip()
     
     try:
         payload = verify_token(token)
@@ -63,13 +62,15 @@ def get_current_user(authorization: str = Header(None), db: Session = Depends(ge
         
         return user
         
+    except HTTPException:
+        raise
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token format",
+            detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -80,7 +81,6 @@ def get_current_user(authorization: str = Header(None), db: Session = Depends(ge
 @router.get("/dashboard")
 async def get_dashboard_data(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
 ):
     """
     Get user dashboard overview data
@@ -106,7 +106,6 @@ async def get_dashboard_data(
 async def upload_file(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
 ):
     """
     Upload file to encrypted vault
@@ -146,7 +145,6 @@ async def upload_file(
 @router.get("/vault/files")
 async def get_vault_files(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
 ):
     """
     Get list of files in user's encrypted vault
@@ -161,7 +159,6 @@ async def get_vault_files(
 @router.get("/monitor/breaches")
 async def get_breach_monitor_data(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
 ):
     """
     Get breach monitoring data for authenticated user

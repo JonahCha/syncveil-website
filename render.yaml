@@ -64,7 +64,7 @@ services:
       
       # Email Verification Settings
       - key: EMAIL_VERIFICATION_REQUIRED
-        value: false
+        value: true
       - key: EMAIL_VERIFICATION_EXPIRE_HOURS
         value: 24
       

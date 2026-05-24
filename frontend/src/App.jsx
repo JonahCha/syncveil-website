@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navigation from './components/Navigation';
 import Home from './components/views/Home';
 import Dashboard from './components/views/Dashboard';
@@ -14,8 +14,9 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [verificationEmail, setVerificationEmail] = useState(null);
+  const [verificationToken, setVerificationToken] = useState(null);
 
-  // Check if user is already logged in on mount
   useEffect(() => {
     const checkAuth = () => {
       const authenticated = isAuthenticated();
@@ -31,12 +32,39 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Update nav height CSS variable on mount and resize
+    // Handle email verification links such as /verify-email?token=123456
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    const token = new URLSearchParams(window.location.search).get('token');
+
+    if (path !== '/verify-email' || !token) return;
+
+    setCurrentView('auth-choice');
+
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        await authAPI.verifyEmail(token);
+        setError('Email verified successfully. You can sign in now.');
+      } catch (err) {
+        setError(err.message || 'Email verification failed. Please try again.');
+      } finally {
+        setVerificationEmail(null);
+        setVerificationToken(null);
+        setLoading(false);
+        if (window.history?.replaceState) {
+          window.history.replaceState({}, '', '/');
+        }
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
     const updateNavHeight = () => {
       const nav = document.querySelector('nav#public-nav');
       if (!nav || nav.style.display === 'none') return;
       const h = nav.offsetHeight || 72;
-      document.documentElement.style.setProperty('--nav-height', h + 'px');
+      document.documentElement.style.setProperty('--nav-height', `${h}px`);
     };
 
     window.addEventListener('load', updateNavHeight);
@@ -53,8 +81,7 @@ function App() {
     setCurrentView(viewId);
     setError(null);
     window.scrollTo({ top: 0, behavior: 'instant' });
-    
-    // Reinitialize Lucide icons
+
     if (window.lucide) {
       window.lucide.createIcons();
     }
@@ -64,7 +91,7 @@ function App() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+
     const form = e.target;
     const email = form.querySelector('input[type="email"]').value;
     const password = form.querySelector('input[type="password"]').value;
@@ -76,16 +103,17 @@ function App() {
       btn.disabled = true;
 
       const response = await authAPI.login(email, password);
-      
+      setVerificationEmail(null);
+      setVerificationToken(null);
       setIsAuth(true);
       setUser(response.user);
       switchView('dashboard');
     } catch (err) {
       console.error('Login error:', err);
       setError(err.message || 'Login failed. Please try again.');
+    } finally {
       btn.innerText = originalText;
       btn.disabled = false;
-    } finally {
       setLoading(false);
     }
   };
@@ -94,9 +122,8 @@ function App() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+
     const form = e.target;
-    const fullName = form.querySelector('input[type="text"]').value;
     const email = form.querySelector('input[type="email"]').value;
     const password = form.querySelector('input[type="password"]').value;
     const btn = form.querySelector('button[type="submit"]');
@@ -106,27 +133,78 @@ function App() {
       btn.innerText = 'Creating Vault...';
       btn.disabled = true;
 
-      const response = await authAPI.signup(email, password, fullName);
-      
-      // If email verification is required, show message
+      const response = await authAPI.signup(email, password);
+
       if (response.requiresVerification) {
-        setError('Account created! Please check your email to verify your account before logging in.');
-        form.reset();
-        setTimeout(() => switchView('home'), 3000);
-      } else {
-        // Auto-login if no verification required
-        setIsAuth(true);
-        setUser(response.user);
-        switchView('dashboard');
+        setVerificationEmail(email.toLowerCase().trim());
+        setVerificationToken(response.verificationToken || null);
+        setError('Account created. Enter the verification code sent to your email.');
+        return;
       }
+
+      setVerificationEmail(null);
+      setVerificationToken(null);
+      setIsAuth(true);
+      setUser(response.user);
+      switchView('dashboard');
     } catch (err) {
       console.error('Signup error:', err);
       setError(err.message || 'Signup failed. Please try again.');
+    } finally {
       btn.innerText = originalText;
       btn.disabled = false;
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async (code) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await authAPI.verifyEmail(code);
+      setVerificationEmail(null);
+      setVerificationToken(null);
+      setError('Email verified successfully. You can sign in now.');
+    } catch (err) {
+      console.error('Verification error:', err);
+      setError(err.message || 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleResendVerification = async () => {
+    if (!verificationEmail) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await authAPI.resendVerification(verificationEmail);
+      if (response.already_verified) {
+        setVerificationEmail(null);
+        setVerificationToken(null);
+        setError('This email is already verified. You can sign in now.');
+        return;
+      }
+
+      if (response.verification_token) {
+        setVerificationToken(response.verification_token);
+      }
+
+      setError('Verification code sent. Check your email.');
+    } catch (err) {
+      console.error('Resend verification error:', err);
+      setError(err.message || 'Failed to resend verification code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelVerification = () => {
+    setVerificationEmail(null);
+    setVerificationToken(null);
+    setError(null);
   };
 
   const handleLogout = async () => {
@@ -140,7 +218,6 @@ function App() {
       switchView('home');
     } catch (err) {
       console.error('Logout error:', err);
-      // Still log out locally even if backend call fails
       setIsAuth(false);
       setUser(null);
       switchView('home');
@@ -163,7 +240,7 @@ function App() {
   return (
     <div className="bg-white text-slate-900 selection:bg-indigo-100 selection:text-indigo-900 overflow-x-hidden">
       {(currentView === 'home' || currentView === 'auth-choice' || currentView === 'info') && (
-        <Navigation 
+        <Navigation
           onSwitchView={switchView}
           isAuthenticated={isAuth}
         />
@@ -171,9 +248,9 @@ function App() {
 
       <main id="main-content">
         {error && currentView === 'auth-choice' && (
-          <div className="fixed top-4 right-4 bg-rose-50 border border-rose-200 text-rose-900 px-6 py-3 rounded-xl shadow-lg max-w-sm">
+          <div className="fixed top-4 right-4 bg-rose-50 border border-rose-200 text-rose-900 px-6 py-3 rounded-xl shadow-lg max-w-sm z-50">
             <p className="text-sm font-medium">{error}</p>
-            <button 
+            <button
               onClick={() => setError(null)}
               className="text-rose-600 hover:text-rose-700 text-xs mt-2"
             >
@@ -183,7 +260,7 @@ function App() {
         )}
 
         {currentView === 'home' && (
-          <Home 
+          <Home
             onSwitchView={switchView}
             onScrollToSection={(sectionId) => {
               setTimeout(() => {
@@ -193,29 +270,36 @@ function App() {
             }}
           />
         )}
+
         {currentView === 'auth-choice' && (
-          <AuthChoice 
+          <AuthChoice
             onSwitchView={switchView}
             onLogin={handleLogin}
             onSignup={handleSignup}
+            onVerifyEmail={handleVerifyEmail}
+            onResendVerification={handleResendVerification}
+            onCancelVerification={handleCancelVerification}
+            verificationEmail={verificationEmail}
+            verificationToken={verificationToken}
+            loading={loading}
             error={error}
           />
         )}
+
         {currentView === 'dashboard' && isAuth && (
-          <Dashboard 
+          <Dashboard
             onLogout={handleLogout}
             onSwitchView={switchView}
             user={user}
           />
         )}
+
         {currentView === 'info' && (
           <InfoPage onSwitchView={switchView} />
         )}
       </main>
 
-      {!isAuth && (
-        <Footer />
-      )}
+      {!isAuth && <Footer />}
     </div>
   );
 }

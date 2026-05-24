@@ -73,27 +73,6 @@ export const authAPI = {
   }
 },
 
-
-      // Store tokens securely (httpOnly cookies preferred, but using localStorage for demo)
-      if (data.access_token) {
-        localStorage.setItem('access_token', data.access_token);
-        localStorage.setItem('refresh_token', data.refresh_token || '');
-        localStorage.setItem('user_id', data.user?.id || '');
-        localStorage.setItem('user_email', data.user?.email || '');
-      }
-
-      return {
-        success: true,
-        user: data.user,
-        requiresVerification: !data.user?.email_verified,
-        verificationToken: data.verification_token,
-      };
-    } catch (error) {
-      if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error during signup', { original: error.message });
-    }
-  },
-
   /**
    * Login with real email and password
    * CRITICAL: User email must be verified first
@@ -171,6 +150,34 @@ export const authAPI = {
     } catch (error) {
       if (error instanceof APIError) throw error;
       throw new APIError(500, 'Network error during verification', { original: error.message });
+    }
+  },
+
+  /**
+   * Resend verification code to a user email
+   */
+  resendVerification: async (email) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/resend-verification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.toLowerCase().trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new APIError(response.status, data.detail || 'Failed to resend verification code', data);
+      }
+
+      return data;
+    } catch (error) {
+      if (error instanceof APIError) throw error;
+      throw new APIError(500, 'Network error during verification resend', { original: error.message });
     }
   },
 
@@ -267,14 +274,23 @@ export const dashboardAPI = {
         });
 
         xhr.addEventListener('load', () => {
+          const parseBody = () => {
+            if (!xhr.responseText) return {};
+            try {
+              return JSON.parse(xhr.responseText);
+            } catch {
+              return {};
+            }
+          };
+
           if (xhr.status >= 200 && xhr.status < 300) {
-            const response = JSON.parse(xhr.responseText);
+            const response = parseBody();
             resolve({
               success: true,
               file: response,
             });
           } else {
-            const error = JSON.parse(xhr.responseText);
+            const error = parseBody();
             reject(new APIError(xhr.status, error.detail || 'Upload failed', error));
           }
         });

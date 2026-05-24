@@ -17,14 +17,14 @@ if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 _engine = None
-_SessionLocal = None
+SessionLocal = None
 
 if DATABASE_URL:
     _engine = create_engine(
         DATABASE_URL,
         pool_pre_ping=True,
     )
-    _SessionLocal = sessionmaker(
+    SessionLocal = sessionmaker(
         autocommit=False,
         autoflush=False,
         bind=_engine,
@@ -37,12 +37,12 @@ engine = _engine
 
 def get_db():
     """Dependency for getting database session"""
-    if _SessionLocal is None:
+    if SessionLocal is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database not configured. Set DATABASE_URL environment variable.",
         )
-    db = _SessionLocal()
+    db = SessionLocal()
     try:
         yield db
     except Exception:
