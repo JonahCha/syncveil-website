@@ -34,6 +34,7 @@ const storeAuthData = (data) => {
 
 const authHeaders = () => {
   const token = localStorage.getItem('access_token');
+
   if (!token) {
     throw new APIError(401, 'Not authenticated');
   }
@@ -42,6 +43,32 @@ const authHeaders = () => {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
   };
+};
+
+/**
+ * FIXED ERROR HANDLER
+ * Prevents [object Object] errors
+ */
+const getErrorMessage = (data, fallback = 'Request failed') => {
+  if (!data) return fallback;
+
+  if (typeof data.detail === 'string') {
+    return data.detail;
+  }
+
+  if (typeof data.detail === 'object' && data.detail !== null) {
+    return (
+      data.detail.message ||
+      data.detail.error ||
+      JSON.stringify(data.detail)
+    );
+  }
+
+  if (typeof data.message === 'string') {
+    return data.message;
+  }
+
+  return fallback;
 };
 
 // Auth API calls
@@ -64,8 +91,13 @@ export const authAPI = {
       });
 
       const data = await response.json();
+
       if (!response.ok) {
-        throw new APIError(response.status, data.detail || 'Signup failed', data);
+        throw new APIError(
+          response.status,
+          getErrorMessage(data, 'Signup failed'),
+          data
+        );
       }
 
       storeAuthData(data);
@@ -80,8 +112,14 @@ export const authAPI = {
       if (error.name === 'AbortError') {
         throw new APIError(504, 'Backend timeout (cold start on Render)');
       }
+
       if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error during signup');
+
+      throw new APIError(
+        500,
+        error.message || 'Network error during signup',
+        error
+      );
     } finally {
       clearTimeout(timeout);
     }
@@ -101,18 +139,36 @@ export const authAPI = {
       });
 
       const data = await response.json();
+
       if (!response.ok) {
         if (response.status === 401) {
           throw new APIError(401, 'Invalid email or password', data);
         }
+
         if (response.status === 403) {
-          throw new APIError(403, 'Email not verified. Check your inbox for verification code.', data);
+          throw new APIError(
+            403,
+            'Email not verified. Check your inbox for verification code.',
+            data
+          );
         }
+
         if (response.status === 429) {
-          const detailMessage = typeof data.detail === 'object' ? data.detail.message : data.detail;
-          throw new APIError(429, detailMessage || 'Too many login attempts. Try again shortly.', data);
+          throw new APIError(
+            429,
+            getErrorMessage(
+              data,
+              'Too many login attempts. Try again shortly.'
+            ),
+            data
+          );
         }
-        throw new APIError(response.status, data.detail || 'Login failed', data);
+
+        throw new APIError(
+          response.status,
+          getErrorMessage(data, 'Login failed'),
+          data
+        );
       }
 
       if (data.challenge_required) {
@@ -136,7 +192,12 @@ export const authAPI = {
       };
     } catch (error) {
       if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error during login', { original: error.message });
+
+      throw new APIError(
+        500,
+        error.message || 'Network error during login',
+        error
+      );
     }
   },
 
@@ -154,36 +215,60 @@ export const authAPI = {
       });
 
       const data = await response.json();
+
       if (!response.ok) {
-        throw new APIError(response.status, data.detail || 'Challenge verification failed', data);
+        throw new APIError(
+          response.status,
+          getErrorMessage(data, 'Challenge verification failed'),
+          data
+        );
       }
 
       storeAuthData(data);
+
       return {
         success: true,
         user: data.user,
       };
     } catch (error) {
       if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error during challenge verification', { original: error.message });
+
+      throw new APIError(
+        500,
+        error.message || 'Network error during challenge verification',
+        error
+      );
     }
   },
 
   verifyEmail: async (token) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/verify?token=${encodeURIComponent(token)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/auth/verify?token=${encodeURIComponent(token)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       const data = await response.json();
+
       if (!response.ok) {
         if (response.status === 400) {
-          throw new APIError(400, 'Verification token expired or invalid. Request a new one.', data);
+          throw new APIError(
+            400,
+            'Verification token expired or invalid. Request a new one.',
+            data
+          );
         }
-        throw new APIError(response.status, data.detail || 'Verification failed', data);
+
+        throw new APIError(
+          response.status,
+          getErrorMessage(data, 'Verification failed'),
+          data
+        );
       }
 
       return {
@@ -192,37 +277,56 @@ export const authAPI = {
       };
     } catch (error) {
       if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error during verification', { original: error.message });
+
+      throw new APIError(
+        500,
+        error.message || 'Network error during verification',
+        error
+      );
     }
   },
 
   resendVerification: async (email) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/resend-verification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email.toLowerCase().trim(),
-        }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/auth/resend-verification`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: email.toLowerCase().trim(),
+          }),
+        }
+      );
 
       const data = await response.json();
+
       if (!response.ok) {
-        throw new APIError(response.status, data.detail || 'Failed to resend verification code', data);
+        throw new APIError(
+          response.status,
+          getErrorMessage(data, 'Failed to resend verification code'),
+          data
+        );
       }
 
       return data;
     } catch (error) {
       if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error during verification resend', { original: error.message });
+
+      throw new APIError(
+        500,
+        error.message || 'Network error during verification resend',
+        error
+      );
     }
   },
 
   refresh: async () => {
     try {
       const refreshToken = localStorage.getItem('refresh_token');
+
       if (!refreshToken) {
         throw new APIError(401, 'No refresh token available');
       }
@@ -232,20 +336,37 @@ export const authAPI = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        body: JSON.stringify({
+          refresh_token: refreshToken,
+        }),
       });
 
       const data = await response.json();
+
       if (!response.ok) {
         clearAuthStorage();
-        throw new APIError(response.status, data.detail || 'Session refresh failed', data);
+
+        throw new APIError(
+          response.status,
+          getErrorMessage(data, 'Session refresh failed'),
+          data
+        );
       }
 
       storeAuthData(data);
-      return { success: true, user: data.user };
+
+      return {
+        success: true,
+        user: data.user,
+      };
     } catch (error) {
       if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error during token refresh', { original: error.message });
+
+      throw new APIError(
+        500,
+        error.message || 'Network error during token refresh',
+        error
+      );
     }
   },
 
@@ -266,210 +387,15 @@ export const authAPI = {
         });
       }
     } catch {
-      // Ignore backend logout failures; local cleanup still runs.
+      // ignore backend logout failures
     } finally {
       clearAuthStorage();
     }
 
-    return { success: true };
+    return {
+      success: true,
+    };
   },
 };
-
-// Dashboard API calls
-export const dashboardAPI = {
-  getDashboardData: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/dashboard`, {
-        method: 'GET',
-        headers: authHeaders(),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        if (response.status === 401) {
-          clearAuthStorage();
-          throw new APIError(401, 'Session expired. Please log in again.');
-        }
-        throw new APIError(response.status, data.detail || 'Failed to load dashboard', data);
-      }
-
-      return {
-        success: true,
-        data,
-      };
-    } catch (error) {
-      if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error loading dashboard', { original: error.message });
-    }
-  },
-
-  uploadFile: async (file, onProgress) => {
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new APIError(401, 'Not authenticated');
-      }
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      return await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-
-        xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            const percentComplete = (e.loaded / e.total) * 100;
-            onProgress?.(percentComplete);
-          }
-        });
-
-        xhr.addEventListener('load', () => {
-          const parseBody = () => {
-            if (!xhr.responseText) return {};
-            try {
-              return JSON.parse(xhr.responseText);
-            } catch {
-              return {};
-            }
-          };
-
-          if (xhr.status >= 200 && xhr.status < 300) {
-            const response = parseBody();
-            resolve({
-              success: true,
-              file: response.file || response,
-            });
-          } else {
-            const error = parseBody();
-            reject(new APIError(xhr.status, error.detail || 'Upload failed', error));
-          }
-        });
-
-        xhr.addEventListener('error', () => {
-          reject(new APIError(500, 'Network error during upload'));
-        });
-
-        xhr.open('POST', `${API_BASE_URL}/api/vault/upload`);
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-        xhr.send(formData);
-      });
-    } catch (error) {
-      if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Failed to upload file', { original: error.message });
-    }
-  },
-
-  getVaultFiles: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/vault/files`, {
-        method: 'GET',
-        headers: authHeaders(),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new APIError(response.status, data.detail || 'Failed to load files', data);
-      }
-
-      return {
-        success: true,
-        files: data,
-      };
-    } catch (error) {
-      if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error loading files', { original: error.message });
-    }
-  },
-
-  getBreachData: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/monitor/breaches`, {
-        method: 'GET',
-        headers: authHeaders(),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new APIError(response.status, data.detail || 'Failed to load breach data', data);
-      }
-
-      return {
-        success: true,
-        breaches: data,
-      };
-    } catch (error) {
-      if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error loading breach data', { original: error.message });
-    }
-  },
-
-  getSecurityOverview: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/security/overview`, {
-        method: 'GET',
-        headers: authHeaders(),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new APIError(response.status, data.detail || 'Failed to load security overview', data);
-      }
-
-      return { success: true, data };
-    } catch (error) {
-      if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error loading security overview', { original: error.message });
-    }
-  },
-
-  getSecurityEvents: async (limit = 20) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/security/events?limit=${encodeURIComponent(limit)}`, {
-        method: 'GET',
-        headers: authHeaders(),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new APIError(response.status, data.detail || 'Failed to load security events', data);
-      }
-
-      return { success: true, data };
-    } catch (error) {
-      if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error loading security events', { original: error.message });
-    }
-  },
-};
-
-export const publicAPI = {
-  getSecuritySnapshot: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/public/security-snapshot`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new APIError(response.status, data.detail || 'Failed to load public security snapshot', data);
-      }
-
-      return { success: true, data };
-    } catch (error) {
-      if (error instanceof APIError) throw error;
-      throw new APIError(500, 'Network error loading public security snapshot', { original: error.message });
-    }
-  },
-};
-
-export const isAuthenticated = () => Boolean(localStorage.getItem('access_token'));
-
-export const getCurrentUser = () => ({
-  id: localStorage.getItem('user_id'),
-  email: localStorage.getItem('user_email'),
-});
 
 export { APIError };
