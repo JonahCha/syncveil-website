@@ -7,6 +7,7 @@ RULES:
 - Development must NEVER crash due to missing external services
 """
 
+import os
 from functools import lru_cache
 from typing import List
 
@@ -29,18 +30,12 @@ class Settings(BaseSettings):
     # ======================
     # Environment
     # ======================
-    ENV: str = Field(default="development", env="ENV")
-
-    # ======================
-    # Database (MongoDB)
-    # ======================
-    MONGO_URI: str = Field(default="", env="MONGO_URI")
-    MONGO_DB_NAME: str = Field(default="", env="MONGO_DB_NAME")
+    ENV: str = Field(default="development", alias="ENV")
 
     # ======================
     # JWT
     # ======================
-    JWT_SECRET: str = Field(default="", env="JWT_SECRET")
+    JWT_SECRET: str = Field(default="", alias="JWT_SECRET")
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -48,14 +43,14 @@ class Settings(BaseSettings):
     # ======================
     # Redis (Optional)
     # ======================
-    REDIS_URL: str = Field(default="", env="REDIS_URL")
+    REDIS_URL: str = Field(default="", alias="REDIS_URL")
 
     # ======================
     # Email (Brevo)
     # ======================
     EMAIL_ENABLED: bool = False
-    BREVO_API_KEY: str = Field(default="", env="BREVO_API_KEY")
-    SMTP_FROM: str = Field(default="", env="SMTP_FROM")
+    BREVO_API_KEY: str = Field(default="", alias="BREVO_API_KEY")
+    SMTP_FROM: str = Field(default="", alias="SMTP_FROM")
     EMAIL_FROM_NAME: str = "SyncVeil"
 
     # ======================
@@ -64,6 +59,19 @@ class Settings(BaseSettings):
     OTP_LENGTH: int = 6
     OTP_EXPIRE_MINUTES: int = 5
     OTP_MAX_ATTEMPTS: int = 3
+
+    # ======================
+    # Adaptive Security Engine
+    # ======================
+    SECURITY_CHALLENGE_THRESHOLD: int = 60
+    SECURITY_CRITICAL_THRESHOLD: int = 85
+    SECURITY_EVENTS_DAYS: int = 7
+
+    # ======================
+    # Vault Storage
+    # ======================
+    VAULT_ENCRYPTION_KEY: str = Field(default="", alias="VAULT_ENCRYPTION_KEY")
+    VAULT_STORAGE_DIR: str = Field(default="/tmp/vault_storage", alias="VAULT_STORAGE_DIR")
 
     # ======================
     # Email Verification
@@ -88,26 +96,26 @@ class Settings(BaseSettings):
     # ======================
     # CORS
     # ======================
-    CORS_ORIGINS: str = Field(default="", env="CORS_ORIGINS")
+    CORS_ORIGINS: str = Field(default="", alias="CORS_ORIGINS")
 
     # ======================
     # Admin
     # ======================
     INITIAL_ADMIN_EMAIL: str = Field(
-        default="admin@syncveil.com",
-        env="INITIAL_ADMIN_EMAIL",
+        default="",
+        alias="INITIAL_ADMIN_EMAIL",
     )
 
     # ======================
     # Logging
     # ======================
-    LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
+    LOG_LEVEL: str = Field(default="INFO", alias="LOG_LEVEL")
     LOG_FILE: str = "logs/syncveil.log"
 
     # ======================
     # Frontend
     # ======================
-    FRONTEND_URL: str = Field(default="", env="FRONTEND_URL")
+    FRONTEND_URL: str = Field(default="", alias="FRONTEND_URL")
 
     # ======================
     # Validators & Helpers
@@ -140,11 +148,14 @@ class Settings(BaseSettings):
 
         errors: list[str] = []
 
+        # Database configuration
+        database_url = os.getenv("DATABASE_URL", "").strip()
+        if not database_url:
+            errors.append("DATABASE_URL is required")
+        elif not database_url.startswith(("postgresql://", "postgres://")):
+            errors.append("DATABASE_URL must be a PostgreSQL connection string")
+
         # Core required settings
-        if not self.MONGO_URI:
-            errors.append("MONGO_URI is required")
-        if not self.MONGO_DB_NAME:
-            errors.append("MONGO_DB_NAME is required")
         if not self.JWT_SECRET:
             errors.append("JWT_SECRET is required")
 
@@ -152,11 +163,14 @@ class Settings(BaseSettings):
         if self.JWT_SECRET and len(self.JWT_SECRET) < 32:
             errors.append("JWT_SECRET must be at least 32 characters")
 
-        if self.MONGO_URI and not (
-            self.MONGO_URI.startswith("mongodb://")
-            or self.MONGO_URI.startswith("mongodb+srv://")
-        ):
-            errors.append("MONGO_URI must be a valid MongoDB connection string")
+        if not self.VAULT_ENCRYPTION_KEY:
+            errors.append("VAULT_ENCRYPTION_KEY is required")
+        elif len(self.VAULT_ENCRYPTION_KEY) < 32:
+            errors.append("VAULT_ENCRYPTION_KEY must be at least 32 characters")
+
+        # Frontend URL must be configured
+        if not self.FRONTEND_URL:
+            errors.append("FRONTEND_URL is required in production")
 
         # Email only enforced if enabled
         if self.EMAIL_ENABLED:

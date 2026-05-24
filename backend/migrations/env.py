@@ -4,16 +4,23 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 import os
+import sys
 
 # Import our models
 from app.db.base import Base
 
 config = context.config
 
-# Configure database URL from environment (used only when running legacy SQL migrations)
+# Configure database URL from environment
 database_url = os.getenv("DATABASE_URL", "").strip()
+
 if not database_url:
-    raise RuntimeError("DATABASE_URL is not set. SQL migrations are disabled for MongoDB-only deployments.")
+    print("WARNING: DATABASE_URL is not set. Skipping SQL migrations.")
+    sys.exit(0)
+
+# Coerce legacy Render postgres:// to postgresql:// (SQLAlchemy 1.4+ requirement)
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
 
 config.set_main_option("sqlalchemy.url", database_url)
 

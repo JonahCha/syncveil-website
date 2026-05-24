@@ -1,220 +1,106 @@
-# 🛡️ SyncVeil
+# SyncVeil
 
-**Privacy-First Security Platform** — Modern authentication, encrypted data storage, and user-centric privacy tools.
+Security-first full-stack platform with React frontend and FastAPI backend.
 
----
+## Stack
+- Frontend: React + Vite (`frontend/`)
+- Backend: FastAPI + SQLAlchemy + Alembic (`backend/`)
+- Primary data store: PostgreSQL (`DATABASE_URL`)
+- Auth/session security: JWT access token + hashed refresh-token sessions
+- Deployment: Render (`render.yaml`)
 
-## 🚀 Quick Start
+## Core Security Features
+- Argon2 password hashing
+- SQL-backed email verification OTP flow
+- Adaptive offline suspicious-login detection
+- Automatic cooldown for repeated failed login behavior
+- Step-up login challenge for high-risk sign-ins
+- Server-side refresh session validation and rotation
+- Server-side encrypted vault storage (AES-GCM)
+- Session self-healing (expired sessions auto-revoked)
 
-### Production Deployment (Render)
-
-1. **Fork this repository**
-2. **Deploy to Render**
-   - Connect your GitHub repository
-   - Render uses `render.yaml` for configuration
-3. **Set Environment Variables** (see [Configuration](#configuration))
-4. **Deploy!**
-
-View your app at: `https://syncveil-backend.onrender.com`
-
-### Local Development
-
-```bash
-# Clone repository
-git clone https://github.com/SyncVeil/syncveil-website.git
-cd syncveil-website
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy environment template
-cp .env.example .env
-# Edit .env with your settings
-
-# Start development server
-chmod +x start_backend.sh
-./start_backend.sh
-```
-
-Server runs at: `http://localhost:8000`
-
----
-
-## 📋 Configuration
-
-### Required Environment Variables
-
-```bash
-# Environment
-ENVIRONMENT=production
-
-# Database (PostgreSQL for production)
-DATABASE_URL=postgresql://user:pass@host:5432/dbname
-
-# JWT Authentication
-JWT_SECRET=<generate-strong-random-key>
-JWT_ALGORITHM=HS256
-
-# Email Service (Brevo Transactional Email API)
-BREVO_API_KEY=<your-brevo-api-key>
-SMTP_FROM=<verified-sender@example.com>
-EMAIL_FROM=noreply@yourdomain.com
-
-# CORS
-CORS_ORIGINS=https://yourdomain.com
-
-# Frontend URL
-FRONTEND_URL=https://yourdomain.com
-```
-
-### Optional Environment Variables
-
-```bash
-# MongoDB Atlas (NoSQL features)
-MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true&w=majority
-MONGO_DB_NAME=syncveil
-
-# Redis (Session/Rate limiting)
-REDIS_URL=redis://default:password@host:6379
-```
-
-See [.env.example](.env.example) for complete configuration options.
-
----
-
-## 🏗️ Architecture
-
-```
-SyncVeil
-├── FastAPI Backend (Python)
-│   ├── JWT Authentication
-│   ├── MongoDB Atlas (NoSQL data storage)
-│   └── Brevo (Email)
-├── React Frontend (Vite)
-│   └── Static site on Render
-└── Render Deployment
-    ├── Automatic HTTPS
-    ├── Environment variables
-    └── render.yaml configuration
-```
-
-### Tech Stack
-
-- **Backend**: FastAPI, Motor (MongoDB)
-- **Database**: MongoDB Atlas
-- **Auth**: JWT, Argon2 password hashing
-- **Email**: Brevo (Transactional API)
-- **Deployment**: Render
-
----
-
-## 📚 API Documentation
-
-Once deployed, visit:
-- **Interactive Docs**: `https://syncveil-backend.onrender.com/docs`
-- **Alternative Docs**: `https://syncveil-backend.onrender.com/redoc`
-- **Health Check**: `https://syncveil-backend.onrender.com/health`
-
-### Key Endpoints
-
-- `POST /auth/signup` - Create new account
-- `POST /auth/login` - User login
-- `POST /auth/refresh` - Refresh access token
-- `GET /health` - Health check
-- `GET /api/mongodb/*` - MongoDB operations (if enabled)
-
----
-
-## 🗂️ Project Structure
-
-```
+## Repository Structure
+```text
 syncveil-website/
-├── app/
-│   ├── auth/           # Authentication logic
-│   ├── core/           # Configuration, security, JWT
-│   ├── db/             # Database connections
-│   └── mongodb/        # MongoDB routes & models
-├── migrations/         # Database migrations
-├── *.html              # Frontend pages
-├── Procfile           # Railway deployment config
-├── requirements.txt   # Python dependencies
-├── .env.example       # Environment template
-└── start_backend.sh   # Local development script
+├── backend/
+│   ├── app/
+│   │   ├── auth/
+│   │   ├── core/
+│   │   ├── db/
+│   │   ├── dashboard_routes.py
+│   │   └── main.py
+│   ├── migrations/
+│   ├── requirements.txt
+│   └── alembic.ini
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   ├── package.json
+│   └── vite.config.js
+├── scripts/
+├── render.yaml
+└── README.md
 ```
 
----
+## Required Environment Variables
+### Backend
+- `ENV=production`
+- `DATABASE_URL=postgresql://...`
+- `JWT_SECRET=...` (32+ chars)
+- `VAULT_ENCRYPTION_KEY=...` (32+ chars)
+- `CORS_ORIGINS=https://syncveil.software,https://www.syncveil.software,https://syncveil-website.onrender.com`
+- `FRONTEND_URL=https://syncveil.software`
 
-## 🔒 Security Features
+Optional:
+- `EMAIL_ENABLED=true|false`
+- `BREVO_API_KEY=...` (required when `EMAIL_ENABLED=true`)
+- `SMTP_FROM=...` (required when `EMAIL_ENABLED=true`)
+- `EMAIL_VERIFICATION_REQUIRED=true|false`
 
-- ✅ Argon2 password hashing
-- ✅ JWT-based authentication
-- ✅ Rate limiting on auth endpoints
-- ✅ CORS configuration
-- ✅ Environment-based secrets
-- ✅ No hardcoded credentials
-- ✅ SSL/TLS for all connections
+### Frontend
+- `VITE_API_URL=https://syncveil-backend.onrender.com`
 
----
+## API Surface
+### Auth
+- `POST /auth/signup`
+- `POST /auth/login`
+- `POST /auth/login/challenge`
+- `GET /auth/verify?token=...`
+- `POST /auth/resend-verification`
+- `POST /auth/refresh`
+- `POST /auth/logout`
 
-## 🧪 Testing
+### App
+- `GET /api/dashboard`
+- `POST /api/vault/upload`
+- `GET /api/vault/files`
+- `GET /api/monitor/breaches`
+- `GET /api/security/overview`
+- `GET /api/security/events`
+- `GET /api/public/security-snapshot`
 
+### Health
+- `GET /health`
+
+## Build and Validation
+Run CI-equivalent checks:
 ```bash
-# Run backend tests
-python test_backend.py
-
-# Test health endpoint
-curl https://syncveil-backend.onrender.com/health
+bash scripts/ci-check.sh
 ```
 
----
+This runs:
+1. Backend syntax compile
+2. Backend import smoke test
+3. Frontend production build
 
-## 📖 Documentation
+## Render Deployment
+Use `render.yaml` blueprint:
+1. Create new Render Blueprint from this repository.
+2. Ensure backend env vars are set (especially `DATABASE_URL`, `JWT_SECRET`, `VAULT_ENCRYPTION_KEY`, and email vars when enabled).
+3. Ensure frontend `VITE_API_URL` points to the backend Render service URL.
 
-- [Deployment Guide](DEPLOYMENT_GUIDE.md)
-- [MongoDB Atlas Setup](MONGODB_ATLAS_SETUP.md)
-- [MongoDB API Documentation](MONGODB_API.md)
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
-
----
-
-## 🆘 Support
-
-- **Issues**: [GitHub Issues](https://github.com/SyncVeil/syncveil-website/issues)
-- **Documentation**: See documentation files
-- **Email**: support@syncveil.com
-
----
-
-## 🎯 Roadmap
-
-- [ ] Two-factor authentication (2FA)
-- [ ] OAuth integrations (Google, GitHub)
-- [ ] Account recovery flow
-- [ ] Admin dashboard
-- [ ] API rate limiting dashboard
-- [ ] WebSocket support for real-time features
-
----
-
-**Built with ❤️ by the SyncVeil Team**
-
-*Privacy Reinvented. Security Simplified.*
+## Security Notes
+- Frontend auth state is never trusted by itself; backend validates token + active SQL session.
+- Refresh token misuse revokes affected sessions.
+- High-risk sign-ins require challenge verification before token issuance.
+- Vault files are encrypted before storage and indexed with integrity metadata.

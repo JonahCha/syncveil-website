@@ -1,14 +1,10 @@
-import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.auth import models  # noqa: F401 (ensure models are registered)
 from app.auth.routes import router as auth_router
 from app.dashboard_routes import router as dashboard_router
-from app.mongodb.routes import router as mongodb_router
-from app.db.mongodb import connect_to_mongodb, close_mongodb_connection
 from app.core.config import get_settings
 
 
@@ -22,34 +18,32 @@ settings = get_settings()
 # LIFESPAN (Startup / Shutdown)
 # ==========================
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     # Validate configuration (production-safe)
     # Settings already loaded globally to avoid repeated reads
 
-    # MongoDB connection (non-blocking)
-    if settings.MONGO_URI:
-        print("🔌 Attempting MongoDB Atlas connection...")
-        asyncio.create_task(try_connect_mongodb())
-    else:
+    # Create SQL tables if not already present (safety net for first deploy)
+    try:
+        from app.db.session import engine
+        if engine is not None:
+            from app.db.base import Base
+            Base.metadata.create_all(bind=engine)
+            print("✅ SQL tables ensured (created if missing)")
+        else:
+            print("⚠️  DATABASE_URL not set — skipping SQL table creation")
+            if settings.is_production:
+                raise RuntimeError(
+                    "DATABASE_URL is required in production. "
+                    "Add it as an environment variable in Render."
+                )
+    except RuntimeError:
+        raise
+    except Exception as e:
+        print(f"⚠️  SQL table creation check failed: {e}")
         if settings.is_production:
-            raise RuntimeError("MONGO_URI is required in production")
-        print("⚠️  MONGO_URI not set - MongoDB features disabled")
+            raise RuntimeError(f"Database initialization failed: {e}")
 
     yield
-
-    # Shutdown cleanup
-    try:
-        await close_mongodb_connection()
-    except Exception:
-        pass
-
-
-async def try_connect_mongodb():
-    try:
-        await connect_to_mongodb()
-    except Exception as e:
-        print(f"⚠️  MongoDB connection failed: {e}")
-        print("   App will continue without MongoDB endpoints")
 
 
 # ==========================
@@ -76,11 +70,7 @@ if settings.CORS_ORIGINS:
 if settings.FRONTEND_URL:
     origins.append(settings.FRONTEND_URL.rstrip("/"))
 
-# 3. Local dev ONLY
-if not settings.is_production:
-    origins.append("http://localhost:5173")
-
-# 4. Production safety check
+# 3. Safety check
 if settings.is_production and not origins:
     raise RuntimeError(
         "❌ CORS misconfigured: no allowed origins in production"
@@ -108,4 +98,3 @@ def health():
 # ==========================
 app.include_router(auth_router, prefix="/auth")
 app.include_router(dashboard_router)
-app.include_router(mongodb_router, prefix="/api")

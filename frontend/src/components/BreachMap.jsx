@@ -1,121 +1,131 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { publicAPI } from '../api';
+
+const severityClass = {
+  critical: 'text-rose-700 bg-rose-100 border-rose-200',
+  high: 'text-amber-700 bg-amber-100 border-amber-200',
+  medium: 'text-yellow-700 bg-yellow-100 border-yellow-200',
+  low: 'text-emerald-700 bg-emerald-100 border-emerald-200',
+};
 
 export default function BreachMap() {
-  let mapInstance = null;
+  const [snapshot, setSnapshot] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (typeof window.jsVectorMap === 'undefined') {
-      // Load jsVectorMap dynamically
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/jsvectormap@2.1.1/dist/index.min.js';
-      script.onload = initMap;
-      document.head.appendChild(script);
-    } else {
-      initMap();
-    }
-
-    return () => {
-      if (mapInstance && typeof mapInstance.destroy === 'function') {
-        mapInstance.destroy();
+    const loadSnapshot = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await publicAPI.getSecuritySnapshot();
+        setSnapshot(response.data);
+      } catch (err) {
+        console.error('Failed to load security snapshot:', err);
+        setError(err.message || 'Failed to load security snapshot');
+      } finally {
+        setLoading(false);
       }
     };
+
+    loadSnapshot();
   }, []);
 
-  const countryCodes = ["AF","AL","DZ","AO","AR","AM","AU","AT","AZ","BS","BD","BY","BE","BZ","BJ","BT","BO","BA","BW","BR","BN","BG","BF","BI","KH","CM","CA","CV","CF","CD","CG","CR","CI","HR","CU","CY","CZ","DK","DJ","DO","EC","EG","SV","GQ","ER","EE","ET","FK","FJ","FI","FR","GA","GM","GE","DE","GH","GR","GL","GT","GN","GW","GY","HT","HN","HK","HU","IS","IN","ID","IR","IQ","IE","IL","IT","JM","JP","JO","KZ","KE","KP","KR","KW","KG","LA","LV","LB","LS","LR","LY","LT","LU","MK","MG","MW","MY","MV","ML","MT","MR","MU","MX","MD","MN","ME","MA","MZ","MM","NA","NP","NL","NC","NZ","NI","NE","NG","NO","OM","PK","PA","PG","PY","PE","PH","PL","PT","PR","QA","XK","RO","RU","RW","SA","SN","RS","SL","SG","SK","SI","SB","SO","ZA","SS","ES","LK","SD","SR","SZ","SE","CH","SY","TW","TJ","TZ","TH","TL","TG","TT","TN","TR","TM","UG","UA","AE","GB","US","UY","UZ","VU","VE","VN","YE","ZM","ZW"];
-
-  const highRiskTargets = {
-    "US": { score: 95, label: "3.2M Records" },
-    "CN": { score: 88, label: "2.1M Records" },
-    "RU": { score: 92, label: "1.8M Records" },
-    "IN": { score: 85, label: "2.5M Records" },
-    "BR": { score: 82, label: "1.2M Records" },
-    "DE": { score: 75, label: "950K Records" },
-    "GB": { score: 78, label: "820K Records" },
-    "FR": { score: 72, label: "600K Records" },
-    "AU": { score: 65, label: "450K Records" },
-    "UA": { score: 85, label: "Conflict Zone Activity" },
-    "IR": { score: 80, label: "Targeted Attacks" }
-  };
-
-  const breachData = {};
-  countryCodes.forEach(code => {
-    if (highRiskTargets[code]) {
-      breachData[code] = highRiskTargets[code].score;
-    } else {
-      breachData[code] = Math.floor(Math.random() * 40) + 10;
-    }
-  });
-
-  const initMap = () => {
-    const mapEl = document.getElementById('breach-map');
-    if (!mapEl || typeof window.jsVectorMap === 'undefined') return;
-
-    try {
-      mapEl.innerHTML = '';
-      mapInstance = new window.jsVectorMap({
-        selector: '#breach-map',
-        map: 'world',
-        backgroundColor: 'transparent',
-        draggable: true,
-        zoomButtons: false,
-        zoomOnScroll: false,
-        visualizeData: {
-          scale: ['#e2e8f0', '#e11d48'],
-          values: breachData
-        },
-        regionStyle: {
-          initial: { fill: '#cbd5e1', stroke: '#ffffff', strokeWidth: 0.5, fillOpacity: 1 },
-          hover: { fillOpacity: 0.8, cursor: 'pointer' },
-          selected: { fill: '#4f46e5' }
-        },
-        onRegionTooltipShow(event, tooltip, code) {
-          let content = `<div class="font-bold text-white mb-1">${tooltip.text()}</div>`;
-          if (highRiskTargets[code]) {
-            content += `<div class="text-rose-400 font-bold text-xs">⚠️ High Activity</div>`;
-            content += `<div class="text-slate-300 text-xs">${highRiskTargets[code].label} exposed</div>`;
-          } else {
-            const count = (breachData[code] || 10) * 1240;
-            content += `<div class="text-teal-400 font-bold text-xs">Low Activity</div>`;
-            content += `<div class="text-slate-300 text-xs">~${(count/1000).toFixed(1)}K anomalies</div>`;
-          }
-          tooltip.text(content, true);
-        }
-      });
-
-      window.addEventListener('resize', () => {
-        if (mapInstance && typeof mapInstance.updateSize === 'function') {
-          mapInstance.updateSize();
-        }
-      });
-    } catch (error) {
-      console.warn('Map initialization failed:', error);
-    }
-  };
+  const trend = snapshot?.trend_7d || [];
+  const maxFailed = trend.reduce((max, day) => Math.max(max, day.failed_attempts || 0), 1);
 
   return (
     <div className="space-y-8">
-      <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-lg">
-        <div className="map-gradient-overlay absolute inset-0 pointer-events-none z-10"></div>
-        <div id="breach-map" className="w-full h-96 md:h-[500px]"></div>
+      <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-lg bg-white p-6">
+        <h3 className="text-lg font-bold text-slate-900 mb-1">Live Security Activity (Last 30 Days)</h3>
+        <p className="text-sm text-slate-600 mb-5">
+          Real telemetry generated from SyncVeil backend login protection systems.
+        </p>
+
+        {loading && <p className="text-sm text-slate-500">Loading security telemetry...</p>}
+        {error && <p className="text-sm text-rose-600">{error}</p>}
+
+        {!loading && !error && (
+          <>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <p className="text-xs text-slate-500">Total Attempts</p>
+                <p className="text-2xl font-bold text-slate-900">{snapshot?.total_attempts ?? 0}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <p className="text-xs text-slate-500">Blocked Attempts</p>
+                <p className="text-2xl font-bold text-slate-900">{snapshot?.failed_attempts ?? 0}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <p className="text-xs text-slate-500">Risk Challenges</p>
+                <p className="text-2xl font-bold text-slate-900">{snapshot?.challenge_events ?? 0}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <p className="text-xs text-slate-500">Cooldown Activations</p>
+                <p className="text-2xl font-bold text-slate-900">{snapshot?.cooldown_events ?? 0}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-slate-900">Failed Attempts Trend (7 Days)</h4>
+              <div className="grid grid-cols-7 gap-2 h-28 items-end">
+                {trend.map((day) => {
+                  const value = day.failed_attempts || 0;
+                  const ratio = Math.max(6, Math.round((value / maxFailed) * 100));
+                  return (
+                    <div key={day.date} className="flex flex-col items-center gap-2">
+                      <div className="w-full bg-slate-100 rounded-md relative h-20 overflow-hidden">
+                        <div
+                          className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-indigo-600 to-teal-500 rounded-md"
+                          style={{ height: `${ratio}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-500">{day.date.slice(5)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
-      
+
       <div className="grid md:grid-cols-3 gap-6">
         <div className="p-6 bg-slate-50 rounded-xl border border-slate-200">
-          <p className="text-sm text-slate-600 mb-2">High-Risk Regions</p>
-          <p className="text-3xl font-bold text-slate-900">11+</p>
-          <p className="text-xs text-rose-600 mt-2">Active threat zones</p>
+          <p className="text-sm text-slate-600 mb-2">Latest Incident</p>
+          <p className="text-base font-bold text-slate-900">
+            {snapshot?.last_incident ? new Date(snapshot.last_incident).toLocaleString() : 'No recent incidents'}
+          </p>
+          <p className="text-xs text-slate-500 mt-2">Derived from backend event logs</p>
         </div>
         <div className="p-6 bg-slate-50 rounded-xl border border-slate-200">
-          <p className="text-sm text-slate-600 mb-2">Records Exposed</p>
-          <p className="text-3xl font-bold text-slate-900">15.2M</p>
-          <p className="text-xs text-amber-600 mt-2">Last 30 days</p>
+          <p className="text-sm text-slate-600 mb-2">Successful Attempts</p>
+          <p className="text-3xl font-bold text-slate-900">{snapshot?.successful_attempts ?? 0}</p>
+          <p className="text-xs text-emerald-600 mt-2">Verified and approved sessions</p>
         </div>
         <div className="p-6 bg-slate-50 rounded-xl border border-slate-200">
-          <p className="text-sm text-slate-600 mb-2">Attacks Detected</p>
-          <p className="text-3xl font-bold text-slate-900">2,847</p>
-          <p className="text-xs text-indigo-600 mt-2">Daily average</p>
+          <p className="text-sm text-slate-600 mb-2">Window</p>
+          <p className="text-3xl font-bold text-slate-900">{snapshot?.window_days ?? 30}d</p>
+          <p className="text-xs text-indigo-600 mt-2">Rolling telemetry interval</p>
         </div>
       </div>
+
+      {snapshot?.recent_events?.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-slate-900">Recent Security Events</h4>
+          {snapshot.recent_events.slice(0, 5).map((event, idx) => (
+            <div key={`${event.timestamp}-${idx}`} className="p-4 bg-white rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{event.message}</p>
+                <p className="text-xs text-slate-500">{new Date(event.timestamp).toLocaleString()}</p>
+              </div>
+              <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${severityClass[event.severity] || severityClass.low}`}>
+                {(event.severity || 'low').toUpperCase()}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
