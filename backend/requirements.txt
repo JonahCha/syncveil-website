@@ -6,8 +6,6 @@ uvicorn[standard]==0.32.1
 sqlalchemy==2.0.36
 psycopg2-binary==2.9.9  # PostgreSQL adapter
 alembic==1.13.1  # Database migrations
-motor==3.3.2  # Async MongoDB driver
-pymongo==4.6.1  # MongoDB driver
 
 # Data Validation
 pydantic[email]==2.10.3
@@ -25,7 +23,6 @@ slowapi==0.1.9
 # Utilities
 python-dotenv==1.0.0
 redis==5.0.1  # For session storage and rate limiting
-certifi  # SSL certificate validation for MongoDB Atlas
 
 # Development
 pytest==7.4.3

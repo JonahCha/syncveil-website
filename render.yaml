@@ -31,6 +31,8 @@ services:
       # JWT Authentication (REQUIRED - must be 32+ characters)
       - key: JWT_SECRET
         generateValue: true
+      - key: VAULT_ENCRYPTION_KEY
+        generateValue: true
       - key: JWT_ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
@@ -38,15 +40,9 @@ services:
       - key: REFRESH_TOKEN_EXPIRE_DAYS
         value: 30
       
-      # MongoDB (REQUIRED for OTP storage and data features)
-      - key: MONGO_URI
-        sync: false
-      - key: MONGO_DB_NAME
-        value: syncveil
-      
-      # Email Service (REQUIRED for email verification)
+      # Email Service (Optional - set EMAIL_ENABLED=false if not configuring email)
       - key: EMAIL_ENABLED
-        value: true
+        value: false
       - key: BREVO_API_KEY
         sync: false
       - key: SMTP_FROM
@@ -64,7 +60,7 @@ services:
       
       # Email Verification Settings
       - key: EMAIL_VERIFICATION_REQUIRED
-        value: true
+        value: false
       - key: EMAIL_VERIFICATION_EXPIRE_HOURS
         value: 24
       

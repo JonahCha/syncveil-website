@@ -46,7 +46,7 @@ export default function Navigation({ onSwitchView, onScrollToSection }) {
               }}
               className="text-slate-600 hover:text-indigo-600 font-medium transition-colors text-sm"
             >
-              Breach News
+              Security Feed
             </button>
             <button
               type="button"
@@ -88,7 +88,7 @@ export default function Navigation({ onSwitchView, onScrollToSection }) {
               }}
               className="block w-full text-left px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg"
             >
-              Breach News
+              Security Feed
             </button>
             <button
               type="button"

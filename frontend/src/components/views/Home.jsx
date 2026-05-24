@@ -131,32 +131,32 @@ export default function Home({ onSwitchView }) {
               {
                 icon: '🔐',
                 title: 'Encrypted Vault',
-                description: 'Your files are encrypted client-side with AES-256 before upload, ensuring only you can access them.'
+                description: 'Files are encrypted with AES-GCM before storage and tracked with integrity metadata.'
               },
               {
                 icon: '🛡️',
-                title: 'Identity Protection',
-                description: 'Keep your personal details safe from leaks and unauthorized access with advanced monitoring.'
+                title: 'Adaptive Login Defense',
+                description: 'Offline risk scoring detects unusual sign-in behavior such as device and network shifts.'
               },
               {
                 icon: '👁️',
-                title: 'Breach Monitor',
-                description: 'Real-time monitoring and instant alerts for potential data breaches affecting your accounts.'
+                title: 'Step-Up Verification',
+                description: 'High-risk sign-ins are challenged automatically with one-time verification before access.'
               },
               {
                 icon: '🔑',
                 title: 'Secure Authentication',
-                description: 'Multi-factor authentication with industry-standard JWT tokens and Argon2 password hashing.'
+                description: 'Argon2 password hashing plus validated JWT session controls on every protected request.'
               },
               {
                 icon: '📊',
-                title: 'Analytics Dashboard',
-                description: 'Visual insights into your security posture with real-time threat intelligence and metrics.'
+                title: 'Security Telemetry',
+                description: 'Operational dashboard shows active sessions, failed attempts, risk levels, and mitigations.'
               },
               {
                 icon: '🌐',
-                title: 'Cross-Platform Sync',
-                description: 'Seamless synchronization across all your devices with end-to-end encryption throughout.'
+                title: 'Production Deployment',
+                description: 'Render-ready architecture with SQL-backed auth, vault storage, and resilient backend APIs.'
               }
             ].map((feature, idx) => (
               <div key={idx} className="group p-8 bg-white rounded-2xl border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all duration-300">
@@ -173,8 +173,8 @@ export default function Home({ onSwitchView }) {
       <section id="news-section" className="relative py-20 lg:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-900 mb-6">Global Threat Intelligence</h2>
-            <p className="text-xl text-slate-600 max-w-2xl mx-auto">Real-time monitoring of data breach activities across the world.</p>
+            <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-900 mb-6">Security Operations Telemetry</h2>
+            <p className="text-xl text-slate-600 max-w-2xl mx-auto">Live platform activity generated from backend protection events.</p>
           </div>
           
           {mapReady && <BreachMap />}

@@ -14,8 +14,12 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [verificationEmail, setVerificationEmail] = useState(null);
   const [verificationToken, setVerificationToken] = useState(null);
+  const [challengeEmail, setChallengeEmail] = useState(null);
+  const [challengeToken, setChallengeToken] = useState(null);
+  const [challengeRisk, setChallengeRisk] = useState(null);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -43,14 +47,18 @@ function App() {
     (async () => {
       setLoading(true);
       setError(null);
+      setSuccess(null);
       try {
         await authAPI.verifyEmail(token);
-        setError('Email verified successfully. You can sign in now.');
+        setSuccess('Email verified successfully. You can sign in now.');
       } catch (err) {
         setError(err.message || 'Email verification failed. Please try again.');
       } finally {
         setVerificationEmail(null);
         setVerificationToken(null);
+        setChallengeEmail(null);
+        setChallengeToken(null);
+        setChallengeRisk(null);
         setLoading(false);
         if (window.history?.replaceState) {
           window.history.replaceState({}, '', '/');
@@ -80,31 +88,38 @@ function App() {
   const switchView = (viewId) => {
     setCurrentView(viewId);
     setError(null);
-    window.scrollTo({ top: 0, behavior: 'instant' });
-
-    if (window.lucide) {
-      window.lucide.createIcons();
-    }
+    setSuccess(null);
+    window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     const form = e.target;
     const email = form.querySelector('input[type="email"]').value;
     const password = form.querySelector('input[type="password"]').value;
-    const btn = form.querySelector('button[type="submit"]');
-    const originalText = btn.innerText;
 
     try {
-      btn.innerText = 'Authenticating...';
-      btn.disabled = true;
 
       const response = await authAPI.login(email, password);
+      if (response.challengeRequired) {
+        setChallengeEmail(response.email || email.toLowerCase().trim());
+        setChallengeToken(response.challengeToken || null);
+        setChallengeRisk(response.risk || null);
+        setVerificationEmail(null);
+        setVerificationToken(null);
+        setError(response.message || 'Additional verification is required.');
+        return;
+      }
+
       setVerificationEmail(null);
       setVerificationToken(null);
+      setChallengeEmail(null);
+      setChallengeToken(null);
+      setChallengeRisk(null);
       setIsAuth(true);
       setUser(response.user);
       switchView('dashboard');
@@ -112,8 +127,6 @@ function App() {
       console.error('Login error:', err);
       setError(err.message || 'Login failed. Please try again.');
     } finally {
-      btn.innerText = originalText;
-      btn.disabled = false;
       setLoading(false);
     }
   };
@@ -122,28 +135,31 @@ function App() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     const form = e.target;
     const email = form.querySelector('input[type="email"]').value;
     const password = form.querySelector('input[type="password"]').value;
-    const btn = form.querySelector('button[type="submit"]');
-    const originalText = btn.innerText;
 
     try {
-      btn.innerText = 'Creating Vault...';
-      btn.disabled = true;
 
       const response = await authAPI.signup(email, password);
 
       if (response.requiresVerification) {
         setVerificationEmail(email.toLowerCase().trim());
         setVerificationToken(response.verificationToken || null);
-        setError('Account created. Enter the verification code sent to your email.');
+        setChallengeEmail(null);
+        setChallengeToken(null);
+        setChallengeRisk(null);
+        setSuccess('Account created. Enter the verification code sent to your email.');
         return;
       }
 
       setVerificationEmail(null);
       setVerificationToken(null);
+      setChallengeEmail(null);
+      setChallengeToken(null);
+      setChallengeRisk(null);
       setIsAuth(true);
       setUser(response.user);
       switchView('dashboard');
@@ -151,8 +167,6 @@ function App() {
       console.error('Signup error:', err);
       setError(err.message || 'Signup failed. Please try again.');
     } finally {
-      btn.innerText = originalText;
-      btn.disabled = false;
       setLoading(false);
     }
   };
@@ -160,12 +174,16 @@ function App() {
   const handleVerifyEmail = async (code) => {
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       await authAPI.verifyEmail(code);
       setVerificationEmail(null);
       setVerificationToken(null);
-      setError('Email verified successfully. You can sign in now.');
+      setChallengeEmail(null);
+      setChallengeToken(null);
+      setChallengeRisk(null);
+      setSuccess('Email verified successfully. You can sign in now.');
     } catch (err) {
       console.error('Verification error:', err);
       setError(err.message || 'Verification failed. Please try again.');
@@ -179,12 +197,13 @@ function App() {
 
     setLoading(true);
     setError(null);
+    setSuccess(null);
     try {
       const response = await authAPI.resendVerification(verificationEmail);
       if (response.already_verified) {
         setVerificationEmail(null);
         setVerificationToken(null);
-        setError('This email is already verified. You can sign in now.');
+        setSuccess('This email is already verified. You can sign in now.');
         return;
       }
 
@@ -192,7 +211,7 @@ function App() {
         setVerificationToken(response.verification_token);
       }
 
-      setError('Verification code sent. Check your email.');
+      setSuccess('Verification code sent. Check your email.');
     } catch (err) {
       console.error('Resend verification error:', err);
       setError(err.message || 'Failed to resend verification code.');
@@ -201,10 +220,37 @@ function App() {
     }
   };
 
+  const handleVerifyLoginChallenge = async (code) => {
+    if (!challengeEmail) return;
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await authAPI.verifyLoginChallenge(challengeEmail, code);
+      setIsAuth(true);
+      setUser(response.user);
+      setChallengeEmail(null);
+      setChallengeToken(null);
+      setChallengeRisk(null);
+      switchView('dashboard');
+    } catch (err) {
+      console.error('Challenge verification error:', err);
+      setError(err.message || 'Challenge verification failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCancelVerification = () => {
     setVerificationEmail(null);
     setVerificationToken(null);
+    setChallengeEmail(null);
+    setChallengeToken(null);
+    setChallengeRisk(null);
     setError(null);
+    setSuccess(null);
   };
 
   const handleLogout = async () => {
@@ -259,6 +305,18 @@ function App() {
           </div>
         )}
 
+        {success && currentView === 'auth-choice' && (
+          <div className="fixed top-4 right-4 bg-emerald-50 border border-emerald-200 text-emerald-900 px-6 py-3 rounded-xl shadow-lg max-w-sm z-50">
+            <p className="text-sm font-medium">{success}</p>
+            <button
+              onClick={() => setSuccess(null)}
+              className="text-emerald-600 hover:text-emerald-700 text-xs mt-2"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {currentView === 'home' && (
           <Home
             onSwitchView={switchView}
@@ -281,6 +339,10 @@ function App() {
             onCancelVerification={handleCancelVerification}
             verificationEmail={verificationEmail}
             verificationToken={verificationToken}
+            challengeEmail={challengeEmail}
+            challengeToken={challengeToken}
+            challengeRisk={challengeRisk}
+            onVerifyLoginChallenge={handleVerifyLoginChallenge}
             loading={loading}
             error={error}
           />

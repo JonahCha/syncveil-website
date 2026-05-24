@@ -23,6 +23,8 @@ class EmailService:
         self._validate_config()
 
     def _validate_config(self) -> None:
+        if not settings.EMAIL_ENABLED:
+            return
         missing = []
         if not self.api_key:
             missing.append("BREVO_API_KEY")
@@ -32,6 +34,10 @@ class EmailService:
             raise RuntimeError(f"Email configuration missing: {', '.join(missing)}")
 
     def _send(self, to_email: str, subject: str, html_content: str) -> bool:
+        if not settings.EMAIL_ENABLED:
+            logger.info(f"Email disabled (EMAIL_ENABLED=False). Skipped send to {to_email}: {subject}")
+            return True
+
         payload = {
             "sender": {"email": self.sender_email, "name": self.sender_name},
             "to": [{"email": to_email}],

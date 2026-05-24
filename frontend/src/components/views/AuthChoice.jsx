@@ -7,8 +7,12 @@ export default function AuthChoice({
   onVerifyEmail,
   onResendVerification,
   onCancelVerification,
+  onVerifyLoginChallenge,
   verificationEmail,
   verificationToken,
+  challengeEmail,
+  challengeToken,
+  challengeRisk,
   loading,
   error,
 }) {
@@ -19,15 +23,17 @@ export default function AuthChoice({
   const [signupPassword, setSignupPassword] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [verifyCode, setVerifyCode] = useState('');
+  const [challengeCode, setChallengeCode] = useState('');
 
   useEffect(() => {
-    if (verificationEmail) {
+    if (verificationEmail || challengeEmail) {
       setShowLogin(false);
     } else {
       setShowLogin(true);
       setVerifyCode('');
+      setChallengeCode('');
     }
-  }, [verificationEmail]);
+  }, [verificationEmail, challengeEmail]);
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
@@ -60,6 +66,15 @@ export default function AuthChoice({
     await onVerifyEmail(verifyCode.trim());
   };
 
+  const handleChallengeSubmit = async (e) => {
+    e.preventDefault();
+    if (!challengeCode.trim()) {
+      alert('Please enter your login challenge code');
+      return;
+    }
+    await onVerifyLoginChallenge(challengeCode.trim());
+  };
+
   const handleResend = async () => {
     await onResendVerification();
   };
@@ -83,7 +98,58 @@ export default function AuthChoice({
           </div>
         )}
 
-        {verificationEmail ? (
+        {challengeEmail ? (
+          <form onSubmit={handleChallengeSubmit} className="space-y-4 animate-fade-in-up">
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">Security Check</h2>
+            <p className="text-sm text-slate-600">
+              We detected unusual sign-in behavior. Enter the code sent to <span className="font-semibold text-slate-800">{challengeEmail}</span>.
+            </p>
+
+            {challengeRisk && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-xs text-amber-700 font-semibold mb-1">Risk level: {challengeRisk.level || 'unknown'}</p>
+                <p className="text-xs text-amber-600">Risk score: {challengeRisk.score ?? 'n/a'}</p>
+              </div>
+            )}
+
+            <input
+              name="challenge_code"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              placeholder="Login challenge code"
+              value={challengeCode}
+              onChange={(e) => setChallengeCode(e.target.value.replace(/\D/g, ''))}
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+              required
+            />
+
+            {challengeToken && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <p className="text-xs text-slate-600 mb-1">Development login challenge code:</p>
+                <p className="font-mono font-semibold text-slate-900 tracking-widest">{challengeToken}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Verifying...' : 'Verify & Sign In'}
+            </button>
+
+            <button
+              type="button"
+              onClick={onCancelVerification}
+              disabled={loading}
+              className="w-full py-2 text-slate-500 hover:text-indigo-600 text-sm font-medium disabled:opacity-50"
+            >
+              Use a different account
+            </button>
+          </form>
+        ) : verificationEmail ? (
           <form onSubmit={handleVerifySubmit} className="space-y-4 animate-fade-in-up">
             <h2 className="text-3xl font-bold text-slate-900 mb-2">Verify Your Email</h2>
             <p className="text-sm text-slate-600">

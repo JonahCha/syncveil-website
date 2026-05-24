@@ -123,31 +123,6 @@ main#main-content {
 .bar-h-80 { height: 80%; }
 .bar-h-90 { height: 90%; }
 
-/* Map Styling */
-.jvm-tooltip {
-  background-color: #0f172a;
-  border: 1px solid #334155;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-}
-
-#breach-map {
-  width: 100%;
-  height: auto;
-  background: transparent;
-  min-height: 400px;
-  max-height: 700px;
-}
-
-.map-gradient-overlay {
-  background: linear-gradient(to top, #f8fafc 10%, transparent 100%);
-  pointer-events: none;
-}
-
 /* Mobile Menu */
 #mobile-menu {
   transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
@@ -219,9 +194,6 @@ main#main-content {
     width: 100%;
   }
 
-  #breach-map {
-    min-height: 300px;
-  }
 }
 
 /* Progress Bar Animation */

@@ -35,8 +35,8 @@ print(', '.join(get_settings().cors_origins_list))
 PY
 )"
 echo ""
-echo "API Documentation: http://localhost:$PORT/docs"
-echo "Health Check: http://localhost:$PORT/health"
+echo "API Documentation: http://0.0.0.0:$PORT/docs"
+echo "Health Check: http://0.0.0.0:$PORT/health"
 echo ""
 echo "Press Ctrl+C to stop the server"
 echo "─────────────────────────────────────────"
