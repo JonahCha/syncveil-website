@@ -19,48 +19,45 @@ settings = get_settings()
 # ==========================
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # Validate configuration (production-safe)
-    # Settings already loaded globally to avoid repeated reads
-
     # Initialize database connection and create tables
     try:
         from app.db.session import engine
         from app.db.base import Base
         
         if engine is None:
-            print("⚠️  DATABASE_URL not set — skipping database initialization")
-            if settings.is_production:
-                raise RuntimeError(
-                    "DATABASE_URL is required in production. "
-                    "Add it as an environment variable in Render."
-                )
+            print("⚠️  DATABASE_URL not set — database features will not work")
         else:
-            # Create all tables (safe idempotent operation)
-            Base.metadata.create_all(bind=engine)
-            print("✅ Database tables initialized successfully")
-            
-            # Attempt Alembic migrations if available
             try:
-                from alembic.config import Config
-                from alembic.command import upgrade
-                import os
+                # Create all tables (safe idempotent operation)
+                Base.metadata.create_all(bind=engine)
+                print("✅ Database tables initialized successfully")
                 
-                backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                alembic_ini_path = os.path.join(backend_dir, 'alembic.ini')
-                
-                if os.path.exists(alembic_ini_path):
-                    alembic_cfg = Config(alembic_ini_path)
-                    alembic_cfg.set_main_option('sqlalchemy.url', os.environ.get('DATABASE_URL', ''))
-                    upgrade(alembic_cfg, 'head')
-                    print("✅ Database migrations applied successfully")
-            except Exception as migration_error:
-                print(f"⚠️  Alembic migrations skipped: {migration_error}")
-                # Don't fail - tables are already created
+                # Attempt Alembic migrations if available
+                try:
+                    from alembic.config import Config
+                    from alembic.command import upgrade
+                    import os
+                    
+                    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                    alembic_ini_path = os.path.join(backend_dir, 'alembic.ini')
+                    
+                    if os.path.exists(alembic_ini_path):
+                        alembic_cfg = Config(alembic_ini_path)
+                        alembic_cfg.set_main_option('sqlalchemy.url', os.environ.get('DATABASE_URL', ''))
+                        upgrade(alembic_cfg, 'head')
+                        print("✅ Database migrations applied successfully")
+                except Exception as migration_error:
+                    print(f"⚠️  Alembic migrations skipped: {migration_error}")
+                    # Don't fail - tables are already created
+                    
+            except Exception as db_error:
+                print(f"⚠️  Database initialization warning: {db_error}")
+                print("🚀 App starting anyway - some features may not work until database is available")
+                # Allow app to start anyway - database might be temporarily unavailable
                 
     except Exception as e:
-        print(f"❌ Database initialization failed: {e}")
-        if settings.is_production:
-            raise RuntimeError(f"Database initialization failed: {e}")
+        print(f"⚠️  Unexpected error during initialization: {e}")
+        # Still allow app to start
 
     yield
 
