@@ -28,8 +28,11 @@ async def lifespan(_app: FastAPI):
         from alembic.command import upgrade
         import os
         
-        migration_dir = os.path.join(os.path.dirname(__file__), '..', 'migrations')
-        alembic_cfg = Config(os.path.join(migration_dir, 'alembic.ini'))
+        # Get the backend directory path
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        alembic_ini_path = os.path.join(backend_dir, 'alembic.ini')
+        
+        alembic_cfg = Config(alembic_ini_path)
         alembic_cfg.set_main_option('sqlalchemy.url', os.environ.get('DATABASE_URL', ''))
         
         upgrade(alembic_cfg, 'head')
