@@ -22,6 +22,23 @@ async def lifespan(_app: FastAPI):
     # Validate configuration (production-safe)
     # Settings already loaded globally to avoid repeated reads
 
+    # Run Alembic migrations on startup
+    try:
+        from alembic.config import Config
+        from alembic.command import upgrade
+        import os
+        
+        migration_dir = os.path.join(os.path.dirname(__file__), '..', 'migrations')
+        alembic_cfg = Config(os.path.join(migration_dir, 'alembic.ini'))
+        alembic_cfg.set_main_option('sqlalchemy.url', os.environ.get('DATABASE_URL', ''))
+        
+        upgrade(alembic_cfg, 'head')
+        print("✅ Database migrations completed successfully")
+    except Exception as e:
+        print(f"⚠️  Migration failed: {e}")
+        if settings.is_production:
+            raise RuntimeError(f"Database migration failed: {e}")
+
     # Create SQL tables if not already present (safety net for first deploy)
     try:
         from app.db.session import engine
