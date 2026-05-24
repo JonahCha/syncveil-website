@@ -17,7 +17,7 @@ services:
       
       # PostgreSQL Database (REQUIRED) - Using Neon
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_a0nfPjlsNGIqep~noJsy-kks~aqd4md4_c-8.us-east-1.aws.neon.tech/neondb?sslmode=require
+        value: postgresql://neondb_owner:npg_a0nfPjlsNGIqep~noJsy-kks~aqd4md4_c-8@us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
       
       # JWT Authentication (REQUIRED - must be 32+ characters)
       - key: JWT_SECRET
