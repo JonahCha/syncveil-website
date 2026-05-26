@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, EmailStr, Field
@@ -22,6 +22,10 @@ router = APIRouter(tags=["auth"])
 class SignupRequest(BaseModel):
     email: EmailStr
     password: Annotated[str, Field(min_length=8)]
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    country: Optional[str] = None
+    date_of_birth: Optional[str] = None   # ISO format: YYYY-MM-DD
 
 
 class LoginRequest(BaseModel):
@@ -49,7 +53,15 @@ class LogoutRequest(BaseModel):
 
 @router.post("/signup")
 def signup(payload: SignupRequest, db: Session = Depends(get_db)):
-    return register_user(db, payload.email, payload.password)
+    return register_user(
+        db,
+        payload.email,
+        payload.password,
+        full_name=payload.full_name,
+        phone=payload.phone,
+        country=payload.country,
+        date_of_birth=payload.date_of_birth,
+    )
 
 
 @router.get("/verify")

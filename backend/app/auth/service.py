@@ -31,6 +31,11 @@ def _serialize_user(user: User) -> dict:
     return {
         "id": str(user.id),
         "email": user.email,
+        "full_name": user.full_name,
+        "phone": user.phone,
+        "country": user.country,
+        "date_of_birth": user.date_of_birth.isoformat() if user.date_of_birth else None,
+        "avatar_url": user.avatar_url,
         "email_verified": user.email_verified,
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
@@ -101,7 +106,15 @@ def _issue_tokens(
     }
 
 
-def register_user(db: Session, email: str, password: str) -> dict:
+def register_user(
+    db: Session,
+    email: str,
+    password: str,
+    full_name: str | None = None,
+    phone: str | None = None,
+    country: str | None = None,
+    date_of_birth: str | None = None,
+) -> dict:
     normalized_email = email.lower().strip()
     existing = db.query(User).filter(User.email == normalized_email).first()
     if existing:
@@ -114,9 +127,22 @@ def register_user(db: Session, email: str, password: str) -> dict:
             detail="Email verification is enabled but email delivery is not configured",
         )
 
+    # Parse date_of_birth
+    dob = None
+    if date_of_birth:
+        try:
+            from datetime import date
+            dob = date.fromisoformat(date_of_birth)
+        except (ValueError, TypeError):
+            dob = None
+
     user = User(
         email=normalized_email,
         password_hash=hash_password(password),
+        full_name=full_name.strip() if full_name else None,
+        phone=phone.strip() if phone else None,
+        country=country.strip() if country else None,
+        date_of_birth=dob,
         email_verified=not verification_required,
         email_verified_at=datetime.utcnow() if not verification_required else None,
     )
@@ -159,6 +185,33 @@ def register_user(db: Session, email: str, password: str) -> dict:
         "verification_token": verification_token,
         **tokens,
     }
+
+
+def update_user_profile(
+    db: Session,
+    user: User,
+    full_name: str | None = None,
+    phone: str | None = None,
+    country: str | None = None,
+    date_of_birth: str | None = None,
+) -> dict:
+    if full_name is not None:
+        user.full_name = full_name.strip() or None
+    if phone is not None:
+        user.phone = phone.strip() or None
+    if country is not None:
+        user.country = country.strip() or None
+    if date_of_birth is not None:
+        try:
+            from datetime import date
+            user.date_of_birth = date.fromisoformat(date_of_birth) if date_of_birth else None
+        except (ValueError, TypeError):
+            pass
+
+    user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(user)
+    return _serialize_user(user)
 
 
 def verify_email(db: Session, token: str) -> dict:
