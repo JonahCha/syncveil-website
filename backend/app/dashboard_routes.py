@@ -1,657 +1,332 @@
-"""Dashboard and authenticated feature endpoints."""
+"""Dashboard, Vault, Security, OAuth endpoints"""
 from __future__ import annotations
-
-import os
+import hashlib, io, os
 from datetime import datetime, timedelta
-from typing import Optional, cast
+from typing import Optional
 from uuid import UUID
 
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from app.core.adaptive_security import summarize_security_events
+from app.core.config import get_settings
 from app.core.security import verify_token
-from app.core.vault import list_files, store_file, user_vault_stats
-from app.db.models import ConnectedAccount, LoginLog, Session as UserSession, User
+from app.db.models import ConnectedAccount, LoginLog, Session as UserSession, User, VaultFile
 from app.db.session import get_db
 
-router = APIRouter(prefix="/api", tags=["dashboard"])
+settings  = get_settings()
+router    = APIRouter(prefix="/api", tags=["dashboard"])
+GOOGLE_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_SE = os.getenv("GOOGLE_CLIENT_SECRET", "")
+MS_ID     = os.getenv("MICROSOFT_CLIENT_ID", "")
+MS_SE     = os.getenv("MICROSOFT_CLIENT_SECRET", "")
+FRONT_URL = os.getenv("FRONTEND_URL", "https://syncveil.software")
 
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://syncveil.software")
+# AES-256-GCM vault encryption
+def _vault_key() -> bytes:
+    raw = (settings.VAULT_ENCRYPTION_KEY or settings.JWT_SECRET or "dev-key").encode()
+    return hashlib.sha256(raw).digest()
+AESKEY = _vault_key()
 
 
-# ─── Auth Dependency ──────────────────────────────────────────────────────────
+# ─── Auth dependency ──────────────────────────────────────────────────────────
 
-class AuthenticatedUser:
+class AuthUser:
     def __init__(self, user: User, session: UserSession, db: Session):
-        self.user = user
-        self.session = session
-        self.db = db
+        self.user = user; self.session = session; self.db = db
 
 
-def get_current_user(
-    authorization: str = Header(default=None),
-    db: Session = Depends(get_db),
-) -> AuthenticatedUser:
+def get_current_user(authorization: str = Header(default=None), db: Session = Depends(get_db)) -> AuthUser:
     if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Not authenticated", headers={"WWW-Authenticate": "Bearer"})
     scheme, _, token = authorization.partition(" ")
     if scheme != "Bearer" or not token.strip():
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token format",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    token = token.strip()
-
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token format", headers={"WWW-Authenticate": "Bearer"})
     try:
-        payload = verify_token(token)
-        user_id = payload.get("sub")
-        session_id = payload.get("session_id")
-
-        if not user_id or not session_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        user_uuid = UUID(str(user_id))
-        session_uuid = UUID(str(session_id))
-
-        db_session = (
-            db.query(UserSession)
-            .filter(
-                UserSession.id == session_uuid,
-                UserSession.user_id == user_uuid,
-                UserSession.revoked.is_(False),
-                UserSession.expires_at > datetime.utcnow(),
-            )
-            .first()
-        )
-
-        if not db_session:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Session expired or revoked",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        user = db.query(User).filter(User.id == user_uuid).first()
+        payload = verify_token(token.strip())
+        uid, sid = payload.get("sub"), payload.get("session_id")
+        if not uid or not sid:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+        uu, su = UUID(str(uid)), UUID(str(sid))
+        sess = db.query(UserSession).filter(
+            UserSession.id == su, UserSession.user_id == uu,
+            UserSession.revoked.is_(False), UserSession.expires_at > datetime.utcnow(),
+        ).first()
+        if not sess:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Session expired or revoked")
+        user = db.query(User).filter(User.id == uu).first()
         if not user or user.disabled:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User unavailable",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        return AuthenticatedUser(user=user, session=db_session, db=db)
-
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="User unavailable")
+        return AuthUser(user=user, session=sess, db=db)
+    except HTTPException: raise
+    except Exception as e:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from e
 
 
 # ─── Dashboard Overview ───────────────────────────────────────────────────────
 
 @router.get("/dashboard")
-def get_dashboard(auth_user: AuthenticatedUser = Depends(get_current_user)):
-    db = auth_user.db
-    user = auth_user.user
-    now = datetime.utcnow()
-    seven_days_ago = now - timedelta(days=7)
+def get_dashboard(auth: AuthUser = Depends(get_current_user)):
+    db, user, now = auth.db, auth.user, datetime.utcnow()
+    seven_ago = now - timedelta(days=7)
 
-    vault_stats = {"file_count": 0, "total_size": 0}
-    try:
-        vault_stats = user_vault_stats(str(user.id))
-    except Exception:
-        pass
+    vault_count = db.query(VaultFile).filter(VaultFile.user_id == user.id).count()
+    vault_size  = db.query(VaultFile).filter(VaultFile.user_id == user.id).with_entities(VaultFile.size_bytes).all()
+    total_size  = sum(r.size_bytes or 0 for r in vault_size)
 
-    recent_logins = (
-        db.query(LoginLog)
-        .filter(LoginLog.user_id == user.id)
-        .order_by(desc(LoginLog.timestamp))
-        .limit(5)
-        .all()
-    )
+    active_sessions = db.query(UserSession).filter(
+        UserSession.user_id == user.id, UserSession.revoked.is_(False), UserSession.expires_at > now,
+    ).count()
 
-    active_sessions = (
-        db.query(UserSession)
-        .filter(
-            UserSession.user_id == user.id,
-            UserSession.revoked.is_(False),
-            UserSession.expires_at > now,
-        )
-        .count()
-    )
+    threats_7d = db.query(LoginLog).filter(
+        LoginLog.user_id == user.id, LoginLog.success.is_(False), LoginLog.timestamp >= seven_ago,
+    ).count()
 
-    failed_logins_7d = (
-        db.query(LoginLog)
-        .filter(
-            LoginLog.user_id == user.id,
-            LoginLog.success.is_(False),
-            LoginLog.timestamp >= seven_days_ago,
-        )
-        .count()
-    )
+    recent = db.query(LoginLog).filter(LoginLog.user_id == user.id).order_by(desc(LoginLog.timestamp)).limit(10).all()
 
-    connected = (
-        db.query(ConnectedAccount)
-        .filter(ConnectedAccount.user_id == user.id)
-        .all()
-    )
+    connected = db.query(ConnectedAccount).filter(ConnectedAccount.user_id == user.id).all()
 
-    return {
-        "data": {
-            "protectedRecords": vault_stats.get("file_count", 0) + active_sessions,
-            "vaultFiles": vault_stats.get("file_count", 0),
-            "vaultSize": vault_stats.get("total_size", 0),
-            "threatsDetected": failed_logins_7d,
-            "activeSessions": active_sessions,
-            "memberSince": user.created_at.isoformat() if user.created_at else None,
-            "lastLogin": user.last_login_at.isoformat() if user.last_login_at else None,
-            "emailVerified": user.email_verified,
-            "connectedAccounts": [
-                {
-                    "provider": c.provider,
-                    "email": c.email,
-                    "displayName": c.display_name,
-                    "connectedAt": c.connected_at.isoformat(),
-                }
-                for c in connected
-            ],
-            "recentActivity": [
-                {
-                    "id": str(log.id),
-                    "success": log.success,
-                    "reason": log.failure_reason,
-                    "ip": log.ip_address,
-                    "device": log.device_info,
-                    "timestamp": log.timestamp.isoformat(),
-                }
-                for log in recent_logins
-            ],
-        }
-    }
+    return {"data": {
+        "protectedRecords": vault_count + active_sessions,
+        "vaultFiles":       vault_count,
+        "vaultSize":        total_size,
+        "threatsDetected":  threats_7d,
+        "activeSessions":   active_sessions,
+        "memberSince":      user.created_at.isoformat() if user.created_at else None,
+        "lastLogin":        user.last_login_at.isoformat() if user.last_login_at else None,
+        "emailVerified":    user.email_verified,
+        "connectedAccounts": [{"provider": c.provider, "email": c.email, "displayName": c.display_name, "connectedAt": c.connected_at.isoformat()} for c in connected],
+        "recentActivity":    [{"id": str(l.id), "success": l.success, "reason": l.failure_reason, "ip": l.ip_address, "location": getattr(l, "location", None), "device": l.device_info, "timestamp": l.timestamp.isoformat()} for l in recent],
+    }}
 
 
-# ─── Profile ──────────────────────────────────────────────────────────────────
+# ─── Profile ─────────────────────────────────────────────────────────────────
 
-class ProfileUpdateRequest(BaseModel):
+class ProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
     country: Optional[str] = None
     date_of_birth: Optional[str] = None
 
-
 @router.get("/profile")
-def get_profile(auth_user: AuthenticatedUser = Depends(get_current_user)):
-    u = auth_user.user
+def get_profile(auth: AuthUser = Depends(get_current_user)):
+    u = auth.user
     return {
-        "id": str(u.id),
-        "email": u.email,
-        "full_name": u.full_name,
-        "phone": u.phone,
-        "country": u.country,
-        "date_of_birth": u.date_of_birth.isoformat() if u.date_of_birth else None,
-        "avatar_url": u.avatar_url,
+        "id": str(u.id), "email": u.email,
+        "full_name":    getattr(u, "full_name", None),
+        "phone":        getattr(u, "phone", None),
+        "country":      getattr(u, "country", None),
+        "date_of_birth": u.date_of_birth.isoformat() if getattr(u, "date_of_birth", None) else None,
+        "avatar_url":   getattr(u, "avatar_url", None),
         "email_verified": u.email_verified,
-        "created_at": u.created_at.isoformat() if u.created_at else None,
+        "created_at":   u.created_at.isoformat() if u.created_at else None,
         "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
     }
 
-
 @router.patch("/profile")
-def update_profile(
-    payload: ProfileUpdateRequest,
-    auth_user: AuthenticatedUser = Depends(get_current_user),
-):
+def update_profile(payload: ProfileUpdate, auth: AuthUser = Depends(get_current_user)):
     from app.auth.service import update_user_profile
-    updated = update_user_profile(
-        auth_user.db,
-        auth_user.user,
-        full_name=payload.full_name,
-        phone=payload.phone,
-        country=payload.country,
-        date_of_birth=payload.date_of_birth,
-    )
+    updated = update_user_profile(auth.db, auth.user, full_name=payload.full_name, phone=payload.phone, country=payload.country, date_of_birth=payload.date_of_birth)
     return {"success": True, "user": updated}
 
 
-# ─── Vault ────────────────────────────────────────────────────────────────────
+# ─── Vault (DB-backed, encrypted) ────────────────────────────────────────────
 
 @router.post("/vault/upload")
-async def upload_file(
-    file: UploadFile = File(...),
-    auth_user: AuthenticatedUser = Depends(get_current_user),
-):
+async def upload_file(file: UploadFile = File(...), auth: AuthUser = Depends(get_current_user)):
+    MAX_SIZE = 5 * 1024 * 1024  # 5 MB
     content = await file.read()
-    result = store_file(
-        user_id=str(auth_user.user.id),
-        filename=file.filename or "unnamed",
-        content=content,
-        content_type=file.content_type or "application/octet-stream",
+    if len(content) > MAX_SIZE:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File exceeds 5 MB limit")
+
+    nonce = os.urandom(12)
+    aad   = str(auth.user.id).encode()
+    cipher = AESGCM(AESKEY)
+    encrypted = cipher.encrypt(nonce, content, aad)
+
+    sha256 = hashlib.sha256(content).hexdigest()
+    vf = VaultFile(
+        user_id      = auth.user.id,
+        file_name    = (file.filename or "file").strip()[:500],
+        content_type = file.content_type or "application/octet-stream",
+        size_bytes   = len(content),
+        sha256       = sha256,
+        encrypted_data = encrypted,
+        nonce        = nonce,
     )
-    return {"file": result}
+    auth.db.add(vf); auth.db.commit(); auth.db.refresh(vf)
+    return {"file": {"id": str(vf.id), "name": vf.file_name, "size": vf.size_bytes, "content_type": vf.content_type, "uploaded_at": vf.uploaded_at.isoformat(), "sha256": sha256}}
 
 
 @router.get("/vault/files")
-def get_vault_files(auth_user: AuthenticatedUser = Depends(get_current_user)):
-    files = list_files(user_id=str(auth_user.user.id))
-    return {"files": files}
+def get_vault_files(auth: AuthUser = Depends(get_current_user)):
+    files = auth.db.query(VaultFile).filter(VaultFile.user_id == auth.user.id).order_by(desc(VaultFile.uploaded_at)).all()
+    return {"files": [{"id": str(f.id), "name": f.file_name, "size": f.size_bytes, "content_type": f.content_type, "uploaded_at": f.uploaded_at.isoformat(), "sha256": f.sha256} for f in files]}
+
+
+@router.delete("/vault/files/{file_id}")
+def delete_vault_file(file_id: str, auth: AuthUser = Depends(get_current_user)):
+    vf = auth.db.query(VaultFile).filter(VaultFile.id == UUID(file_id), VaultFile.user_id == auth.user.id).first()
+    if not vf: raise HTTPException(404, "File not found")
+    auth.db.delete(vf); auth.db.commit()
+    return {"success": True}
 
 
 # ─── Security ─────────────────────────────────────────────────────────────────
 
 @router.get("/security/overview")
-def get_security_overview(auth_user: AuthenticatedUser = Depends(get_current_user)):
-    db = auth_user.db
-    user = auth_user.user
-    now = datetime.utcnow()
-    seven_days_ago = now - timedelta(days=7)
-
-    active_sessions = (
-        db.query(UserSession)
-        .filter(
-            UserSession.user_id == user.id,
-            UserSession.revoked.is_(False),
-            UserSession.expires_at > now,
-        )
-        .count()
-    )
-
-    successes = (
-        db.query(LoginLog)
-        .filter(
-            LoginLog.user_id == user.id,
-            LoginLog.success.is_(True),
-            LoginLog.timestamp >= seven_days_ago,
-        )
-        .count()
-    )
-
-    failures = (
-        db.query(LoginLog)
-        .filter(
-            LoginLog.user_id == user.id,
-            LoginLog.success.is_(False),
-            LoginLog.timestamp >= seven_days_ago,
-        )
-        .count()
-    )
-
+def security_overview(auth: AuthUser = Depends(get_current_user)):
+    db, user, now = auth.db, auth.user, datetime.utcnow()
+    seven_ago = now - timedelta(days=7)
+    active_sessions = db.query(UserSession).filter(UserSession.user_id==user.id, UserSession.revoked.is_(False), UserSession.expires_at>now).count()
+    successes = db.query(LoginLog).filter(LoginLog.user_id==user.id, LoginLog.success.is_(True),  LoginLog.timestamp>=seven_ago).count()
+    failures  = db.query(LoginLog).filter(LoginLog.user_id==user.id, LoginLog.success.is_(False), LoginLog.timestamp>=seven_ago).count()
     total = successes + failures
-    failure_rate = (failures / total) if total > 0 else 0
-    risk_score = min(100, int(failure_rate * 100 + failures * 5))
-    risk_level = (
-        "critical" if risk_score >= 80
-        else "high" if risk_score >= 60
-        else "medium" if risk_score >= 30
-        else "low"
-    )
-
-    # Security score is inverse of risk
-    security_score = max(0, 100 - risk_score)
-    if user.email_verified:
-        security_score = min(100, security_score + 10)
-
-    return {
-        "data": {
-            "risk_score": risk_score,
-            "risk_level": risk_level,
-            "security_score": security_score,
-            "active_sessions": active_sessions,
-            "successes_7d": successes,
-            "failures_7d": failures,
-        }
-    }
+    fail_rate  = failures / total if total > 0 else 0
+    risk_score = min(100, int(fail_rate * 100 + failures * 3))
+    risk_level = "critical" if risk_score>=80 else "high" if risk_score>=60 else "medium" if risk_score>=30 else "low"
+    sec_score  = max(0, min(100, 100 - risk_score + (10 if user.email_verified else 0)))
+    return {"data": {"risk_score": risk_score, "risk_level": risk_level, "security_score": sec_score, "active_sessions": active_sessions, "successes_7d": successes, "failures_7d": failures}}
 
 
 @router.get("/security/events")
-def get_security_events(
-    limit: int = Query(default=20, le=100),
-    auth_user: AuthenticatedUser = Depends(get_current_user),
-):
-    db = auth_user.db
-    user = auth_user.user
+def security_events(limit: int = Query(default=25, le=100), auth: AuthUser = Depends(get_current_user)):
+    events = auth.db.query(LoginLog).filter(LoginLog.user_id==auth.user.id).order_by(desc(LoginLog.timestamp)).limit(limit).all()
+    return {"data": {"events": [{"id": str(e.id), "success": e.success, "reason": e.failure_reason, "ip_address": e.ip_address, "location": getattr(e,"location",None), "device_info": e.device_info, "timestamp": e.timestamp.isoformat()} for e in events]}}
 
-    events = (
-        db.query(LoginLog)
-        .filter(LoginLog.user_id == user.id)
-        .order_by(desc(LoginLog.timestamp))
-        .limit(limit)
-        .all()
-    )
-
-    return {
-        "data": {
-            "events": [
-                {
-                    "id": str(e.id),
-                    "success": e.success,
-                    "reason": e.failure_reason,
-                    "ip_address": e.ip_address,
-                    "device_info": e.device_info,
-                    "timestamp": e.timestamp.isoformat(),
-                }
-                for e in events
-            ]
-        }
-    }
-
-
-# ─── Breach Monitor ───────────────────────────────────────────────────────────
 
 @router.get("/monitor/breaches")
-def get_breach_monitor(auth_user: AuthenticatedUser = Depends(get_current_user)):
-    db = auth_user.db
-    user = auth_user.user
-    now = datetime.utcnow()
-    thirty_days_ago = now - timedelta(days=30)
-
-    suspicious = (
-        db.query(LoginLog)
-        .filter(
-            LoginLog.user_id == user.id,
-            LoginLog.success.is_(False),
-            LoginLog.timestamp >= thirty_days_ago,
-        )
-        .order_by(desc(LoginLog.timestamp))
-        .limit(20)
-        .all()
-    )
-
-    breaches = []
-    for log in suspicious:
-        reason = log.failure_reason or "unknown"
-        if "invalid_credentials" in reason:
-            msg = "Failed login attempt with invalid credentials"
-            severity = "medium"
-        elif "cooldown" in reason:
-            msg = "Account temporarily blocked due to too many attempts"
-            severity = "high"
-        elif "security_challenge" in reason:
-            msg = "Suspicious login triggered security challenge"
-            severity = "high"
-        elif "account_disabled" in reason:
-            msg = "Login attempted on disabled account"
-            severity = "critical"
-        else:
-            msg = "Unusual login activity detected"
-            severity = "low"
-
-        breaches.append({
-            "id": str(log.id),
-            "message": msg,
-            "severity": severity,
-            "type": reason,
-            "ip": log.ip_address,
-            "timestamp": log.timestamp.isoformat(),
-        })
-
-    return {
-        "breaches": {
-            "breaches": breaches,
-            "totalEvents": len(breaches),
-        }
+def breach_monitor(auth: AuthUser = Depends(get_current_user)):
+    db, user, now = auth.db, auth.user, datetime.utcnow()
+    logs = db.query(LoginLog).filter(LoginLog.user_id==user.id, LoginLog.success.is_(False), LoginLog.timestamp>=(now-timedelta(days=30))).order_by(desc(LoginLog.timestamp)).limit(20).all()
+    MSGS = {
+        "bad_credentials":    ("Failed login with wrong password", "medium"),
+        "cooldown":           ("Account temporarily blocked — too many attempts", "high"),
+        "otp_challenge_sent": ("New sign-in code requested", "info"),
+        "disabled":           ("Login attempt on disabled account", "critical"),
     }
+    def classify(r):
+        for k,(msg,sev) in MSGS.items():
+            if r and k in r: return msg, sev
+        return "Unusual login activity detected", "low"
+    breaches = []
+    for l in logs:
+        msg, sev = classify(l.failure_reason or "")
+        if sev == "info": continue
+        breaches.append({"id": str(l.id), "message": msg, "severity": sev, "type": l.failure_reason, "ip": l.ip_address, "location": getattr(l,"location",None), "timestamp": l.timestamp.isoformat()})
+    return {"breaches": {"breaches": breaches, "totalEvents": len(breaches)}}
 
 
 # ─── Email Security ───────────────────────────────────────────────────────────
 
 @router.get("/email-security")
-def get_email_security(auth_user: AuthenticatedUser = Depends(get_current_user)):
-    db = auth_user.db
-    user = auth_user.user
-    now = datetime.utcnow()
-    seven_days_ago = now - timedelta(days=7)
-
-    failures_7d = (
-        db.query(LoginLog)
-        .filter(
-            LoginLog.user_id == user.id,
-            LoginLog.success.is_(False),
-            LoginLog.timestamp >= seven_days_ago,
-        )
-        .count()
-    )
-
-    unique_ips = (
-        db.query(LoginLog.ip_address)
-        .filter(
-            LoginLog.user_id == user.id,
-            LoginLog.timestamp >= seven_days_ago,
-        )
-        .distinct()
-        .count()
-    )
-
-    spam_risk_score = min(100, failures_7d * 8 + (unique_ips - 1) * 5)
-    spam_risk_level = (
-        "critical" if spam_risk_score >= 70
-        else "high" if spam_risk_score >= 40
-        else "medium" if spam_risk_score >= 20
-        else "low"
-    )
-
-    connected = (
-        db.query(ConnectedAccount)
-        .filter(ConnectedAccount.user_id == user.id)
-        .all()
-    )
-
-    return {
-        "email": user.email,
-        "email_verified": user.email_verified,
-        "spam_risk_score": spam_risk_score,
-        "spam_risk_level": spam_risk_level,
-        "failed_attempts_7d": failures_7d,
-        "unique_ips_7d": unique_ips,
-        "breach_status": "clear",
-        "last_checked": now.isoformat(),
-        "connected_emails": [
-            {
-                "provider": c.provider,
-                "email": c.email,
-                "connected_at": c.connected_at.isoformat(),
-            }
-            for c in connected
-        ],
-    }
+def email_security(auth: AuthUser = Depends(get_current_user)):
+    db, user, now = auth.db, auth.user, datetime.utcnow()
+    seven_ago = now - timedelta(days=7)
+    fails_7d  = db.query(LoginLog).filter(LoginLog.user_id==user.id, LoginLog.success.is_(False), LoginLog.timestamp>=seven_ago).count()
+    unique_ips = db.query(LoginLog.ip_address).filter(LoginLog.user_id==user.id, LoginLog.timestamp>=seven_ago).distinct().count()
+    spam_score = min(100, fails_7d * 8 + max(0, unique_ips - 1) * 5)
+    spam_level = "critical" if spam_score>=70 else "high" if spam_score>=40 else "medium" if spam_score>=20 else "low"
+    connected  = db.query(ConnectedAccount).filter(ConnectedAccount.user_id==user.id).all()
+    return {"email": user.email, "email_verified": user.email_verified, "spam_risk_score": spam_score, "spam_risk_level": spam_level, "failed_attempts_7d": fails_7d, "unique_ips_7d": unique_ips, "breach_status": "clear", "last_checked": now.isoformat(), "connected_emails": [{"provider": c.provider, "email": c.email, "connected_at": c.connected_at.isoformat()} for c in connected]}
 
 
 # ─── Connected Accounts ───────────────────────────────────────────────────────
 
 @router.get("/connected-accounts")
-def get_connected_accounts(auth_user: AuthenticatedUser = Depends(get_current_user)):
-    accounts = (
-        auth_user.db.query(ConnectedAccount)
-        .filter(ConnectedAccount.user_id == auth_user.user.id)
-        .all()
-    )
-    return {
-        "accounts": [
-            {
-                "id": str(a.id),
-                "provider": a.provider,
-                "email": a.email,
-                "display_name": a.display_name,
-                "avatar_url": a.avatar_url,
-                "connected_at": a.connected_at.isoformat(),
-                "last_synced_at": a.last_synced_at.isoformat() if a.last_synced_at else None,
-            }
-            for a in accounts
-        ]
-    }
-
+def connected_accounts(auth: AuthUser = Depends(get_current_user)):
+    accs = auth.db.query(ConnectedAccount).filter(ConnectedAccount.user_id==auth.user.id).all()
+    return {"accounts": [{"id": str(a.id), "provider": a.provider, "email": a.email, "display_name": a.display_name, "avatar_url": a.avatar_url, "connected_at": a.connected_at.isoformat()} for a in accs]}
 
 @router.delete("/connected-accounts/{provider}")
-def disconnect_account(
-    provider: str,
-    auth_user: AuthenticatedUser = Depends(get_current_user),
-):
-    account = (
-        auth_user.db.query(ConnectedAccount)
-        .filter(
-            ConnectedAccount.user_id == auth_user.user.id,
-            ConnectedAccount.provider == provider,
-        )
-        .first()
-    )
-    if not account:
-        raise HTTPException(status_code=404, detail="Connected account not found")
-
-    auth_user.db.delete(account)
-    auth_user.db.commit()
-    return {"success": True, "provider": provider}
+def disconnect(provider: str, auth: AuthUser = Depends(get_current_user)):
+    a = auth.db.query(ConnectedAccount).filter(ConnectedAccount.user_id==auth.user.id, ConnectedAccount.provider==provider).first()
+    if not a: raise HTTPException(404, "Not found")
+    auth.db.delete(a); auth.db.commit()
+    return {"success": True}
 
 
 # ─── Google OAuth ─────────────────────────────────────────────────────────────
 
 @router.get("/auth/google")
-def google_oauth_init(auth_user: AuthenticatedUser = Depends(get_current_user)):
-    """Returns the Google OAuth URL for the frontend to redirect to."""
-    if not GOOGLE_CLIENT_ID:
-        raise HTTPException(
-            status_code=503,
-            detail="Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
-        )
-
+def google_init(auth: AuthUser = Depends(get_current_user)):
+    if not GOOGLE_ID: raise HTTPException(503, "Google OAuth not configured. Add GOOGLE_CLIENT_ID to Render environment.")
     import urllib.parse
-    params = {
-        "client_id": GOOGLE_CLIENT_ID,
-        "redirect_uri": f"{FRONTEND_URL}/oauth/google/callback",
-        "response_type": "code",
-        "scope": "openid email profile",
-        "access_type": "offline",
-        "prompt": "consent",
-        "state": str(auth_user.user.id),
-    }
-    url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+    url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode({
+        "client_id": GOOGLE_ID, "redirect_uri": f"{FRONT_URL}/oauth/google/callback",
+        "response_type": "code", "scope": "openid email profile", "access_type": "offline",
+        "prompt": "consent", "state": str(auth.user.id),
+    })
     return {"url": url}
 
-
 @router.post("/auth/google/callback")
-def google_oauth_callback(
-    code: str,
-    state: str,
-    db: Session = Depends(get_db),
-):
-    """Handles the Google OAuth callback and connects the account."""
-    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        raise HTTPException(status_code=503, detail="Google OAuth not configured")
-
-    import httpx
-
-    try:
-        user_uuid = UUID(state)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid state parameter")
-
-    # Exchange code for tokens
-    token_response = httpx.post(
-        "https://oauth2.googleapis.com/token",
-        data={
-            "code": code,
-            "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,
-            "redirect_uri": f"{FRONTEND_URL}/oauth/google/callback",
-            "grant_type": "authorization_code",
-        },
-    )
-
-    if not token_response.is_success:
-        raise HTTPException(status_code=400, detail="Failed to exchange OAuth code")
-
-    token_data = token_response.json()
-    access_token = token_data.get("access_token")
-
-    # Get user info from Google
-    user_info_response = httpx.get(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
-        headers={"Authorization": f"Bearer {access_token}"},
-    )
-
-    if not user_info_response.is_success:
-        raise HTTPException(status_code=400, detail="Failed to fetch Google profile")
-
-    google_user = user_info_response.json()
-
+def google_callback(code: str, state: str, db: Session = Depends(get_db)):
+    if not GOOGLE_ID or not GOOGLE_SE: raise HTTPException(503, "Google OAuth not configured")
+    import httpx as hx
+    try: user_uuid = UUID(state)
+    except: raise HTTPException(400, "Invalid state")
+    t = hx.post("https://oauth2.googleapis.com/token", data={"code": code, "client_id": GOOGLE_ID, "client_secret": GOOGLE_SE, "redirect_uri": f"{FRONT_URL}/oauth/google/callback", "grant_type": "authorization_code"})
+    if not t.is_success: raise HTTPException(400, "OAuth token exchange failed")
+    info = hx.get("https://www.googleapis.com/oauth2/v2/userinfo", headers={"Authorization": f"Bearer {t.json()['access_token']}"})
+    if not info.is_success: raise HTTPException(400, "Failed to get Google profile")
+    g = info.json()
     user = db.query(User).filter(User.id == user_uuid).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Upsert connected account
-    existing = (
-        db.query(ConnectedAccount)
-        .filter(
-            ConnectedAccount.user_id == user.id,
-            ConnectedAccount.provider == "google",
-        )
-        .first()
-    )
-
-    if existing:
-        existing.email = google_user.get("email")
-        existing.display_name = google_user.get("name")
-        existing.avatar_url = google_user.get("picture")
-        existing.access_token = access_token
-        existing.last_synced_at = datetime.utcnow()
+    if not user: raise HTTPException(404, "User not found")
+    acc = db.query(ConnectedAccount).filter(ConnectedAccount.user_id==user.id, ConnectedAccount.provider=="google").first()
+    if acc:
+        acc.email = g.get("email"); acc.display_name = g.get("name"); acc.avatar_url = g.get("picture"); acc.last_synced_at = datetime.utcnow()
     else:
-        db.add(ConnectedAccount(
-            user_id=user.id,
-            provider="google",
-            provider_user_id=google_user.get("id", ""),
-            email=google_user.get("email"),
-            display_name=google_user.get("name"),
-            avatar_url=google_user.get("picture"),
-            access_token=access_token,
-        ))
-
-    # Optionally update user avatar if not set
-    if not user.avatar_url and google_user.get("picture"):
-        user.avatar_url = google_user.get("picture")
-
+        db.add(ConnectedAccount(user_id=user.id, provider="google", provider_user_id=g.get("id",""), email=g.get("email"), display_name=g.get("name"), avatar_url=g.get("picture")))
+    if not getattr(user, "avatar_url", None) and g.get("picture"): user.avatar_url = g.get("picture")
     db.commit()
-    return {"success": True, "provider": "google", "email": google_user.get("email")}
+    return {"success": True, "provider": "google", "email": g.get("email")}
+
+
+# ─── Microsoft OAuth ──────────────────────────────────────────────────────────
+
+@router.get("/auth/microsoft")
+def ms_init(auth: AuthUser = Depends(get_current_user)):
+    if not MS_ID: raise HTTPException(503, "Microsoft OAuth not configured. Add MICROSOFT_CLIENT_ID to Render environment.")
+    import urllib.parse
+    url = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?" + urllib.parse.urlencode({
+        "client_id": MS_ID, "redirect_uri": f"{FRONT_URL}/oauth/microsoft/callback",
+        "response_type": "code", "scope": "openid email profile User.Read",
+        "response_mode": "query", "state": str(auth.user.id),
+    })
+    return {"url": url}
+
+@router.post("/auth/microsoft/callback")
+def ms_callback(code: str, state: str, db: Session = Depends(get_db)):
+    if not MS_ID or not MS_SE: raise HTTPException(503, "Microsoft OAuth not configured")
+    import httpx as hx
+    try: user_uuid = UUID(state)
+    except: raise HTTPException(400, "Invalid state")
+    t = hx.post(f"https://login.microsoftonline.com/common/oauth2/v2.0/token", data={"code": code, "client_id": MS_ID, "client_secret": MS_SE, "redirect_uri": f"{FRONT_URL}/oauth/microsoft/callback", "grant_type": "authorization_code"})
+    if not t.is_success: raise HTTPException(400, "Microsoft OAuth token exchange failed")
+    info = hx.get("https://graph.microsoft.com/v1.0/me", headers={"Authorization": f"Bearer {t.json()['access_token']}"})
+    if not info.is_success: raise HTTPException(400, "Failed to get Microsoft profile")
+    m = info.json()
+    user = db.query(User).filter(User.id == user_uuid).first()
+    if not user: raise HTTPException(404, "User not found")
+    email = m.get("mail") or m.get("userPrincipalName","")
+    acc = db.query(ConnectedAccount).filter(ConnectedAccount.user_id==user.id, ConnectedAccount.provider=="microsoft").first()
+    if acc:
+        acc.email = email; acc.display_name = m.get("displayName"); acc.last_synced_at = datetime.utcnow()
+    else:
+        db.add(ConnectedAccount(user_id=user.id, provider="microsoft", provider_user_id=m.get("id",""), email=email, display_name=m.get("displayName")))
+    db.commit()
+    return {"success": True, "provider": "microsoft", "email": email}
 
 
 # ─── Public Snapshot ──────────────────────────────────────────────────────────
 
 @router.get("/public/security-snapshot")
-def get_public_security_snapshot(db: Session = Depends(get_db)):
+def public_snapshot(db: Session = Depends(get_db)):
     try:
-        total_users = db.query(User).filter(User.disabled.is_(False)).count()
-        total_events = db.query(LoginLog).count()
-        return {
-            "data": {
-                "totalUsers": total_users,
-                "totalEvents": total_events,
-                "status": "operational",
-                "lastUpdated": datetime.utcnow().isoformat(),
-            }
-        }
+        users  = db.query(User).filter(User.disabled.is_(False)).count()
+        events = db.query(LoginLog).count()
+        return {"data": {"totalUsers": users, "totalEvents": events, "status": "operational", "lastUpdated": datetime.utcnow().isoformat()}}
     except Exception:
-        return {
-            "data": {
-                "totalUsers": 0,
-                "totalEvents": 0,
-                "status": "operational",
-                "lastUpdated": datetime.utcnow().isoformat(),
-            }
-        }
+        return {"data": {"totalUsers": 0, "totalEvents": 0, "status": "operational", "lastUpdated": datetime.utcnow().isoformat()}}
