@@ -71,12 +71,19 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
   const [connected,setConnected] = useState([]);
   const [loading,setLoading] = useState(true);
   const [refreshing,setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState(null);
   const [uploadErr,setUploadErr] = useState('');
   const [profForm,setProfForm] = useState({full_name:'',phone:'',country:'',date_of_birth:''});
   const [profSaving,setProfSaving] = useState(false);
   const [profSaved,setProfSaved] = useState(false);
   const [connecting,setConnecting] = useState('');
+  const [toast, setToast] = useState(null); // { msg, type: 'success'|'error' }
   const fileRef = useRef(null);
+
+  const showToast = (msg, type='success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const loadAll = useCallback(async (silent=false) => {
     if(!silent) setLoading(true); else setRefreshing(true);
@@ -95,10 +102,21 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
       const pr=p.value; setProfile(pr);
       setProfForm({full_name:pr.full_name||'',phone:pr.phone||'',country:pr.country||'',date_of_birth:pr.date_of_birth||''});
     }
-    setLoading(false); setRefreshing(false);
+    setLoading(false); setRefreshing(false); setLastRefreshed(new Date());
   },[]);
 
   useEffect(()=>{ loadAll(); },[loadAll]);
+
+  // When returning from OAuth provider, auto-refresh so newly connected account shows up
+  useEffect(() => {
+    const flag = sessionStorage.getItem('oauth_connecting');
+    if (flag) {
+      sessionStorage.removeItem('oauth_connecting');
+      // Small delay to let backend finish writing the ConnectedAccount row
+      const t = setTimeout(() => loadAll(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const upload = async files => {
     setUploadErr('');
@@ -118,12 +136,12 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
 
   const deleteFile = async id => {
     if(!confirm('Delete this file from your vault?')) return;
-    try { await dashboardAPI.deleteVaultFile(id); setVault(p=>p.filter(f=>f.id!==id)); } catch(e){ alert(e.message); }
+    try { await dashboardAPI.deleteVaultFile(id); setVault(p=>p.filter(f=>f.id!==id)); showToast('File deleted.'); } catch(e){ showToast(e.message,'error'); }
   };
 
   const saveProfile = async () => {
     setProfSaving(true); setProfSaved(false);
-    try { await dashboardAPI.updateProfile(profForm); setProfSaved(true); setTimeout(()=>setProfSaved(false),3000); } catch { /* silent */ }
+    try { await dashboardAPI.updateProfile(profForm); setProfSaved(true); showToast('Profile saved.'); setTimeout(()=>setProfSaved(false),3000); } catch(e) { showToast(e.message||'Save failed.','error'); }
     finally { setProfSaving(false); }
   };
 
@@ -132,6 +150,8 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
     try {
       const fn = provider==='google' ? dashboardAPI.getGoogleOAuthUrl : dashboardAPI.getMicrosoftOAuthUrl;
       const r = await fn();
+      // Flag so Dashboard auto-refreshes when the user returns from OAuth
+      sessionStorage.setItem('oauth_connecting', provider);
       window.location.href = r.url;
     } catch(e){ alert(e.message||`${provider} OAuth not configured on the backend yet.`); }
     finally { setConnecting(''); }
@@ -139,7 +159,7 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
 
   const disconnectProvider = async provider => {
     if(!confirm(`Disconnect ${provider}?`)) return;
-    try { await dashboardAPI.disconnectAccount(provider); setConnected(p=>p.filter(a=>a.provider!==provider)); } catch(e){ alert(e.message); }
+    try { await dashboardAPI.disconnectAccount(provider); setConnected(p=>p.filter(a=>a.provider!==provider)); showToast(`${provider} disconnected.`); } catch(e){ showToast(e.message,'error'); }
   };
 
   const connAcc = p => connected.find(a=>a.provider===p);
@@ -157,6 +177,17 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm font-medium transition-all
+          ${toast.type==='error' ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+          {toast.type==='error'
+            ? <X size={15} className="text-rose-500 flex-shrink-0"/>
+            : <CheckCircle size={15} className="text-emerald-500 flex-shrink-0"/>}
+          {toast.msg}
+          <button onClick={()=>setToast(null)} className="ml-2 opacity-60 hover:opacity-100"><X size={13}/></button>
+        </div>
+      )}
       {/* Sidebar */}
       <aside className={`${nav?'w-64':'w-0'} flex-shrink-0 bg-white border-r border-slate-200 flex flex-col transition-all duration-200 overflow-hidden`}>
         <div className="p-5 border-b border-slate-100">
@@ -196,9 +227,16 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
             <button onClick={()=>setNav(n=>!n)} className="p-1.5 rounded-lg hover:bg-slate-100"><Menu size={20} className="text-slate-600"/></button>
             <h1 className="text-lg font-bold text-slate-900">{TABS.find(t=>t.id===tab)?.label}</h1>
           </div>
-          <button onClick={()=>loadAll(true)} disabled={refreshing} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50">
-            <RefreshCw size={13} className={refreshing?'animate-spin':''}/> Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            {lastRefreshed && (
+              <span className="text-xs text-slate-400 hidden sm:block">
+                Updated {ago(lastRefreshed.toISOString())}
+              </span>
+            )}
+            <button onClick={()=>loadAll(true)} disabled={refreshing} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50">
+              <RefreshCw size={13} className={refreshing?'animate-spin':''}/> Refresh
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">

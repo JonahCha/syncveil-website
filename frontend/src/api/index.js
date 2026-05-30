@@ -186,4 +186,14 @@ export const publicAPI = {
       return { data };
     } catch { return { data: { totalUsers:0, totalEvents:0, status:'operational' } }; }
   },
+
+  completeOAuth: async (provider, code, state) => {
+    const path = provider === 'google'
+      ? `/api/auth/google/callback`
+      : `/api/auth/microsoft/callback`;
+    const res = await fetch(`${API_BASE_URL}${path}?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new APIError(res.status, getMsg(data, `${provider} OAuth failed`), data);
+    return data;
+  },
 };

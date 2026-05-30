@@ -1,11 +1,13 @@
 """Email Service — Brevo Transactional Email API"""
 import logging
+from datetime import datetime
 from typing import Optional
 import httpx
 from app.core.config import get_settings
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
 
 def _get_location(ip: str) -> str:
     """Get approximate location from IP — never raises."""
@@ -16,45 +18,177 @@ def _get_location(ip: str) -> str:
         if r.is_success:
             d = r.json()
             if d.get("status") == "success":
-                parts = [d.get("city",""), d.get("regionName",""), d.get("country","")]
+                parts = [d.get("city", ""), d.get("regionName", ""), d.get("country", "")]
                 return ", ".join(p for p in parts if p) or "Unknown"
     except Exception:
         pass
     return "Unknown location"
 
-def _parse_device(user_agent: str) -> str:
+
+def _parse_device(user_agent: str) -> tuple[str, str]:
+    """Return (device_name, browser) from a User-Agent string."""
     if not user_agent:
-        return "Unknown device"
+        return "Unknown device", "Unknown browser"
     ua = user_agent.lower()
     browser = "Browser"
     os_name = "Unknown OS"
-    if "chrome" in ua and "edg" not in ua: browser = "Chrome"
-    elif "firefox" in ua: browser = "Firefox"
-    elif "safari" in ua and "chrome" not in ua: browser = "Safari"
-    elif "edg" in ua: browser = "Edge"
-    elif "opera" in ua or "opr" in ua: browser = "Opera"
-    if "windows" in ua: os_name = "Windows"
-    elif "mac os" in ua or "macos" in ua: os_name = "macOS"
-    elif "iphone" in ua or "ipad" in ua: os_name = "iOS"
-    elif "android" in ua: os_name = "Android"
-    elif "linux" in ua: os_name = "Linux"
-    return f"{browser} on {os_name}"
+    if "chrome" in ua and "edg" not in ua:
+        browser = "Chrome"
+    elif "firefox" in ua:
+        browser = "Firefox"
+    elif "safari" in ua and "chrome" not in ua:
+        browser = "Safari"
+    elif "edg" in ua:
+        browser = "Edge"
+    elif "opera" in ua or "opr" in ua:
+        browser = "Opera"
+    if "windows" in ua:
+        os_name = "Windows"
+    elif "mac os" in ua or "macos" in ua:
+        os_name = "macOS"
+    elif "iphone" in ua or "ipad" in ua:
+        os_name = "iOS"
+    elif "android" in ua:
+        os_name = "Android"
+    elif "linux" in ua:
+        os_name = "Linux"
+    return os_name, browser
 
-BRAND_HEADER = """
-<div style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:28px 32px;text-align:center;border-radius:12px 12px 0 0;">
-  <span style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;">🛡️ SyncVeil</span>
-  <p style="color:#c7d2fe;font-size:13px;margin:4px 0 0;">Security-First Data Protection</p>
-</div>
-"""
-BRAND_FOOTER = """
-<div style="background:#f8fafc;padding:20px;text-align:center;border-top:1px solid #e2e8f0;border-radius:0 0 12px 12px;">
-  <p style="color:#94a3b8;font-size:12px;margin:0;">SyncVeil &bull; End-to-End Encrypted &bull; {year}</p>
-  <p style="color:#cbd5e1;font-size:11px;margin:4px 0 0;">Never share your codes. SyncVeil will never ask for your password.</p>
-</div>
-"""
-def _footer(): 
-    from datetime import datetime
-    return BRAND_FOOTER.replace("{year}", str(datetime.utcnow().year))
+
+# ── Template: OTP ─────────────────────────────────────────────────────────────
+
+OTP_TEMPLATE = """\
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your login code</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #18181b;">
+    <div style="max-width: 480px; margin: 40px auto; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);">
+        <div style="padding: 40px 32px;">
+            <!-- Brand Name / Logo -->
+            <div style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #000000; margin-bottom: 32px;">
+                SyncVeil.
+            </div>
+
+            <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 16px 0; color: #000000;">{{subject_heading}}</h1>
+
+            <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.5; color: #52525b;">
+                Hey {{name}},<br><br>
+                Here is the code you need to log in. It will expire in {{expires_minutes}} minutes.
+            </p>
+
+            <!-- OTP Box -->
+            <div style="background-color: #f4f4f5; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 24px;">
+                <span style="font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #000000;">{{otp_code}}</span>
+            </div>
+
+            <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #71717a;">
+                If you didn't request this email, you can safely ignore it. Someone might have typed your email by mistake.
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #fafafa; padding: 24px 32px; border-top: 1px solid #e4e4e7; text-align: center;">
+            <p style="margin: 0; font-size: 12px; color: #a1a1aa;">
+                &copy; {{year}} SyncVeil Inc. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+
+# ── Template: Login alert ─────────────────────────────────────────────────────
+
+LOGIN_ALERT_TEMPLATE = """\
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New login detected</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #18181b;">
+    <div style="max-width: 480px; margin: 40px auto; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);">
+        <div style="padding: 40px 32px;">
+            <!-- Brand Name / Logo -->
+            <div style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #000000; margin-bottom: 32px;">
+                SyncVeil.
+            </div>
+
+            <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 16px 0; color: #000000;">New login detected</h1>
+
+            <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.5; color: #52525b;">
+                Hey {{name}},<br><br>
+                We noticed a new login to your account from a device we haven't seen before.
+            </p>
+
+            <!-- Login Details Block -->
+            <div style="border-left: 3px solid #000000; padding-left: 16px; margin-bottom: 32px; background-color: #fafafa; padding: 12px 12px 12px 16px; border-radius: 0 6px 6px 0;">
+                <p style="margin: 0 0 8px 0; font-size: 14px; color: #52525b;">
+                    <strong>Device:</strong> {{device_name}} ({{browser}})
+                </p>
+                <p style="margin: 0 0 8px 0; font-size: 14px; color: #52525b;">
+                    <strong>Location:</strong> {{location}}
+                </p>
+                <p style="margin: 0; font-size: 14px; color: #52525b;">
+                    <strong>Time:</strong> {{time}}
+                </p>
+            </div>
+
+            <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.5; color: #52525b;">
+                <strong>Was this you?</strong><br>
+                If so, you can ignore this email. There's nothing else you need to do.
+            </p>
+
+            <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.5; color: #52525b;">
+                <strong>Didn't log in recently?</strong><br>
+                Someone else might have access to your account. Please secure it right away.
+            </p>
+
+            <!-- Call to Action Button -->
+            <a href="{{reset_link}}" style="display: inline-block; background-color: #000000; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 6px;">
+                Secure my account
+            </a>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #fafafa; padding: 24px 32px; border-top: 1px solid #e4e4e7; text-align: center;">
+            <p style="margin: 0; font-size: 12px; color: #a1a1aa;">
+                &copy; {{year}} SyncVeil Inc. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+
+def _render_otp(otp: str, name: str = "there", heading: str = "Sign in to your account") -> str:
+    return (
+        OTP_TEMPLATE
+        .replace("{{subject_heading}}", heading)
+        .replace("{{name}}", name)
+        .replace("{{otp_code}}", otp)
+        .replace("{{expires_minutes}}", str(settings.OTP_EXPIRE_MINUTES))
+        .replace("{{year}}", str(datetime.utcnow().year))
+    )
+
+
+def _render_login_alert(name: str, device_name: str, browser: str,
+                        location: str, time: str, reset_link: str) -> str:
+    return (
+        LOGIN_ALERT_TEMPLATE
+        .replace("{{name}}", name)
+        .replace("{{device_name}}", device_name)
+        .replace("{{browser}}", browser)
+        .replace("{{location}}", location)
+        .replace("{{time}}", time)
+        .replace("{{reset_link}}", reset_link)
+        .replace("{{year}}", str(datetime.utcnow().year))
+    )
 
 
 class EmailService:
@@ -90,96 +224,39 @@ class EmailService:
             raise
 
     def send_verification_email(self, to_email: str, otp: str) -> bool:
-        html = f"""<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;margin:0;background:#f1f5f9;">
-<div style="max-width:520px;margin:40px auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
-  {BRAND_HEADER}
-  <div style="background:#fff;padding:40px 36px;">
-    <h2 style="margin:0 0 8px;color:#1e293b;font-size:22px;">Verify your email address</h2>
-    <p style="color:#64748b;margin:0 0 28px;font-size:15px;">Enter this code in the app to verify your account.</p>
-    <div style="background:#f0f4ff;border:2px dashed #818cf8;border-radius:10px;padding:24px;text-align:center;margin-bottom:24px;">
-      <span style="font-size:42px;font-weight:900;letter-spacing:14px;color:#4f46e5;font-family:monospace;">{otp}</span>
-    </div>
-    <p style="color:#ef4444;font-size:13px;margin:0 0 8px;">⏱ Expires in {settings.OTP_EXPIRE_MINUTES} minutes</p>
-    <p style="color:#94a3b8;font-size:12px;margin:0;">If you didn't create a SyncVeil account, ignore this email.</p>
-  </div>
-  {_footer()}
-</div></body></html>"""
+        html = _render_otp(otp, heading="Verify your email address")
         return self._send(to_email, "Verify your SyncVeil account", html)
 
     def send_otp_email(self, to_email: str, otp: str) -> bool:
-        html = f"""<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;margin:0;background:#f1f5f9;">
-<div style="max-width:520px;margin:40px auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
-  {BRAND_HEADER}
-  <div style="background:#fff;padding:40px 36px;">
-    <h2 style="margin:0 0 8px;color:#1e293b;font-size:22px;">Your sign-in code</h2>
-    <p style="color:#64748b;margin:0 0 28px;">Use this one-time code to complete your login.</p>
-    <div style="background:#f0f4ff;border:2px dashed #818cf8;border-radius:10px;padding:24px;text-align:center;margin-bottom:24px;">
-      <span style="font-size:42px;font-weight:900;letter-spacing:14px;color:#4f46e5;font-family:monospace;">{otp}</span>
-    </div>
-    <p style="color:#ef4444;font-size:13px;margin:0 0 8px;">⏱ Expires in {settings.OTP_EXPIRE_MINUTES} minutes. Do not share this code.</p>
-  </div>
-  {_footer()}
-</div></body></html>"""
+        html = _render_otp(otp, heading="Sign in to your account")
         return self._send(to_email, f"SyncVeil sign-in code: {otp}", html)
 
     def send_password_reset_email(self, to_email: str, otp: str) -> bool:
-        html = f"""<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;margin:0;background:#f1f5f9;">
-<div style="max-width:520px;margin:40px auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
-  {BRAND_HEADER}
-  <div style="background:#fff;padding:40px 36px;">
-    <h2 style="margin:0 0 8px;color:#1e293b;font-size:22px;">Reset your password</h2>
-    <p style="color:#64748b;margin:0 0 28px;">Enter this code to reset your SyncVeil password.</p>
-    <div style="background:#fff7ed;border:2px dashed #f97316;border-radius:10px;padding:24px;text-align:center;margin-bottom:24px;">
-      <span style="font-size:42px;font-weight:900;letter-spacing:14px;color:#ea580c;font-family:monospace;">{otp}</span>
-    </div>
-    <p style="color:#ef4444;font-size:13px;margin:0 0 8px;">⏱ Expires in {settings.OTP_EXPIRE_MINUTES} minutes.</p>
-    <p style="color:#94a3b8;font-size:12px;margin:0;">If you didn't request this, your password is safe — ignore this email.</p>
-  </div>
-  {_footer()}
-</div></body></html>"""
+        html = _render_otp(otp, heading="Reset your password")
         return self._send(to_email, "Reset your SyncVeil password", html)
 
     def send_login_notification(self, to_email: str, *, ip: str, user_agent: str, timestamp: str) -> bool:
-        device   = _parse_device(user_agent)
+        device_name, browser = _parse_device(user_agent)
         location = _get_location(ip)
-        html = f"""<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;margin:0;background:#f1f5f9;">
-<div style="max-width:520px;margin:40px auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
-  {BRAND_HEADER}
-  <div style="background:#fff;padding:40px 36px;">
-    <h2 style="margin:0 0 8px;color:#1e293b;font-size:22px;">New sign-in to your account</h2>
-    <p style="color:#64748b;margin:0 0 24px;">A new sign-in was detected on your SyncVeil account.</p>
-    <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;margin-bottom:24px;">
-      <tr style="background:#f8fafc;">
-        <td style="padding:12px 16px;font-size:13px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0;">🖥️ Device</td>
-        <td style="padding:12px 16px;font-size:14px;color:#1e293b;border-bottom:1px solid #e2e8f0;">{device}</td>
-      </tr>
-      <tr style="background:#fff;">
-        <td style="padding:12px 16px;font-size:13px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0;">📍 Location</td>
-        <td style="padding:12px 16px;font-size:14px;color:#1e293b;border-bottom:1px solid #e2e8f0;">{location}</td>
-      </tr>
-      <tr style="background:#f8fafc;">
-        <td style="padding:12px 16px;font-size:13px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0;">🌐 IP Address</td>
-        <td style="padding:12px 16px;font-size:14px;color:#1e293b;border-bottom:1px solid #e2e8f0;">{ip}</td>
-      </tr>
-      <tr style="background:#fff;">
-        <td style="padding:12px 16px;font-size:13px;color:#64748b;font-weight:600;">🕐 Time</td>
-        <td style="padding:12px 16px;font-size:14px;color:#1e293b;">{timestamp} UTC</td>
-      </tr>
-    </table>
-    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;">
-      <p style="color:#dc2626;font-size:13px;font-weight:600;margin:0 0 4px;">⚠️ Not you?</p>
-      <p style="color:#7f1d1d;font-size:13px;margin:0;">Change your password immediately and contact support at customercare@syncveil.software</p>
-    </div>
-  </div>
-  {_footer()}
-</div></body></html>"""
-        return self._send(to_email, "New sign-in to your SyncVeil account", html)
+        reset_link = f"{settings.FRONTEND_URL or 'https://syncveil.software'}/#reset"
+        html = _render_login_alert(
+            name="there",
+            device_name=device_name,
+            browser=browser,
+            location=location,
+            time=f"{timestamp} UTC",
+            reset_link=reset_link,
+        )
+        return self._send(to_email, "New login detected — SyncVeil", html)
 
     def send_new_device_alert(self, to_email: str, device_info: str, ip_address: str) -> bool:
-        return self.send_login_notification(to_email, ip=ip_address, user_agent=device_info, timestamp="recently")
+        return self.send_login_notification(
+            to_email, ip=ip_address, user_agent=device_info, timestamp="recently"
+        )
 
 
 _svc: Optional[EmailService] = None
+
 
 def get_email_service() -> EmailService:
     global _svc

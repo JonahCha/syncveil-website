@@ -261,7 +261,7 @@ def google_init(auth: AuthUser = Depends(get_current_user)):
     })
     return {"url": url}
 
-@router.post("/auth/google/callback")
+@router.get("/auth/google/callback")
 def google_callback(code: str, state: str, db: Session = Depends(get_db)):
     if not GOOGLE_ID or not GOOGLE_SE: raise HTTPException(503, "Google OAuth not configured")
     import httpx as hx
@@ -297,7 +297,7 @@ def ms_init(auth: AuthUser = Depends(get_current_user)):
     })
     return {"url": url}
 
-@router.post("/auth/microsoft/callback")
+@router.get("/auth/microsoft/callback")
 def ms_callback(code: str, state: str, db: Session = Depends(get_db)):
     if not MS_ID or not MS_SE: raise HTTPException(503, "Microsoft OAuth not configured")
     import httpx as hx
