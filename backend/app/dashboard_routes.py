@@ -157,13 +157,13 @@ async def upload_file(file: UploadFile = File(...), auth: AuthUser = Depends(get
         nonce        = nonce,
     )
     auth.db.add(vf); auth.db.commit(); auth.db.refresh(vf)
-    return {"file": {"id": str(vf.id), "name": vf.file_name, "size": vf.size_bytes, "content_type": vf.content_type, "uploaded_at": vf.uploaded_at.isoformat(), "sha256": sha256}}
+    return {"file": {"id": str(vf.id), "file_name": vf.file_name, "size_bytes": vf.size_bytes, "content_type": vf.content_type, "uploaded_at": vf.uploaded_at.isoformat(), "sha256": sha256}}
 
 
 @router.get("/vault/files")
 def get_vault_files(auth: AuthUser = Depends(get_current_user)):
     files = auth.db.query(VaultFile).filter(VaultFile.user_id == auth.user.id).order_by(desc(VaultFile.uploaded_at)).all()
-    return {"files": [{"id": str(f.id), "name": f.file_name, "size": f.size_bytes, "content_type": f.content_type, "uploaded_at": f.uploaded_at.isoformat(), "sha256": f.sha256} for f in files]}
+    return {"files": [{"id": str(f.id), "file_name": f.file_name, "size_bytes": f.size_bytes, "content_type": f.content_type, "uploaded_at": f.uploaded_at.isoformat(), "sha256": f.sha256} for f in files]}
 
 
 @router.delete("/vault/files/{file_id}")

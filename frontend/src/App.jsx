@@ -13,6 +13,7 @@ function App() {
   const [isAuth, setIsAuth] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [verifyToken, setVerifyToken] = useState(null);
 
   // Check existing session on mount
   useEffect(() => {
@@ -30,6 +31,7 @@ function App() {
     const token = new URLSearchParams(window.location.search).get('token');
     if (path !== '/verify-email' || !token) return;
 
+    setVerifyToken(token);
     setCurrentView('auth-choice');
     if (window.history?.replaceState) {
       window.history.replaceState({}, '', '/');
@@ -98,6 +100,8 @@ function App() {
           <AuthChoice
             onSwitchView={switchView}
             onAuth={handleAuth}
+            initialMode={verifyToken ? 'verify' : undefined}
+            initialToken={verifyToken || undefined}
           />
         )}
 

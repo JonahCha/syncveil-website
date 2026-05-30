@@ -27,15 +27,15 @@ const Suc = ({ msg }) => msg ? <div className="flex items-start gap-2 p-3 bg-eme
 const Btn = ({ children, loading, loadText, ...p }) => <button disabled={loading} {...p} className={`w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-60 ${p.className||''}`}>{loading ? loadText||'Please wait…' : children}</button>;
 
 // MODES: login | otp | signup1 | signup2 | verify | forgot | reset
-export default function AuthChoice({ onAuth, onSwitchView }) {
-  const [mode, setMode]   = useState('login');
+export default function AuthChoice({ onAuth, onSwitchView, initialMode, initialToken }) {
+  const [mode, setMode]   = useState(initialMode || 'login');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr]     = useState('');
   const [suc, setSuc]     = useState('');
   const [savedEmail, setSavedEmail]     = useState('');
   const [savedPassword, setSavedPassword] = useState('');
-  const [form, setForm]   = useState({ email:'', password:'', full_name:'', phone:'', country:'', date_of_birth:'', otp:'' });
+  const [form, setForm]   = useState({ email:'', password:'', full_name:'', phone:'', country:'', date_of_birth:'', otp: initialToken || '' });
 
   const setF = k => e => { setForm(p=>({...p,[k]:e.target.value})); setErr(''); };
   const go   = m => { setMode(m); setErr(''); setSuc(''); setForm(p=>({...p,otp:''})); };
@@ -49,6 +49,7 @@ export default function AuthChoice({ onAuth, onSwitchView }) {
       const res = await authAPI.login(form.email, form.password);
       if (res.challengeRequired) {
         setSavedEmail(form.email);
+        setSavedPassword(form.password);  // needed for OTP resend
         setSuc(res.challenge_token ? `Dev code: ${res.challenge_token}` : 'Sign-in code sent to your email.');
         go('otp');
       }

@@ -2,22 +2,22 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from './App';
-import { authAPI, isAuthenticated } from './api';
+import { authAPI, isAuthenticated, getCurrentUser } from './api';
 
-// 1. Mock the API layer to control success/error responses
+// 1. Mock the API layer
 jest.mock('./api', () => ({
   authAPI: {
     login: jest.fn(),
-    signup: jest.fn(),
+    logout: jest.fn(),
   },
   isAuthenticated: jest.fn(),
   getCurrentUser: jest.fn(),
 }));
 
-// 2. Mock child components to isolate App.jsx's state management
-jest.mock('./components/Navigation', () => ({ onSwitchView }) => (
+// 2. Mock child components, matching the actual props App.jsx passes
+jest.mock('./components/Navigation', () => ({ onSwitchView, isAuthenticated: isAuth }) => (
   <button data-testid="nav-auth" onClick={() => onSwitchView('auth-choice')}>
-    Go to Auth
+    {isAuth ? 'Dashboard' : 'Sign In'}
   </button>
 ));
 
@@ -26,71 +26,80 @@ jest.mock('./components/views/Dashboard', () => () => <div data-testid="dashboar
 jest.mock('./components/views/InfoPage', () => () => <div data-testid="info">Info Page</div>);
 jest.mock('./components/Footer', () => () => <footer data-testid="footer">Footer</footer>);
 
-jest.mock('./components/views/AuthChoice', () => ({ onLogin, onSignup }) => (
+// AuthChoice mock uses the actual props App.jsx passes: onAuth and onSwitchView
+jest.mock('./components/views/AuthChoice', () => ({ onAuth, onSwitchView }) => (
   <div data-testid="auth-choice">
-    <form data-testid="login-form" onSubmit={onLogin}>
-      <input type="email" defaultValue="test@example.com" />
-      <input type="password" defaultValue="password123" />
-      <button type="submit">Submit Login</button>
-    </form>
-    <form data-testid="signup-form" onSubmit={onSignup}>
-      <input type="email" defaultValue="test@example.com" />
-      <input type="password" defaultValue="password123" />
-      <button type="submit">Submit Signup</button>
-    </form>
+    <button
+      data-testid="simulate-auth-success"
+      onClick={() => onAuth({ id: '1', email: 'test@example.com' })}
+    >
+      Simulate Login Success
+    </button>
+    <button
+      data-testid="go-home"
+      onClick={() => onSwitchView('home')}
+    >
+      Back to Home
+    </button>
   </div>
 ));
 
-describe('App.jsx Popup Rendering', () => {
+describe('App.jsx View Routing', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Ensure the app starts in an unauthenticated state
-    isAuthenticated.mockReturnValue(false); 
+    isAuthenticated.mockReturnValue(false);
+    getCurrentUser.mockReturnValue(null);
   });
 
-  test('renders error popup on login failure and allows user to dismiss it', async () => {
-    // Arrange: Force login to throw an error
-    const errorMessage = 'Invalid credentials provided.';
-    authAPI.login.mockRejectedValue(new Error(errorMessage));
-
+  test('renders Home view by default when unauthenticated', () => {
     render(<App />);
-
-    // Act: Navigate to AuthChoice and submit the login form
-    fireEvent.click(screen.getByTestId('nav-auth'));
-    fireEvent.submit(screen.getByTestId('login-form'));
-
-    // Assert: Verify the error popup is rendered
-    const errorPopup = await screen.findByText(errorMessage);
-    expect(errorPopup).toBeInTheDocument();
-    
-    // Act: Click the dismiss button
-    const dismissButton = screen.getByText('Dismiss');
-    fireEvent.click(dismissButton);
-
-    // Assert: Verify the error popup is removed from the DOM
-    expect(screen.queryByText(errorMessage)).not.toBeInTheDocument();
+    expect(screen.getByTestId('home')).toBeInTheDocument();
+    expect(screen.getByTestId('footer')).toBeInTheDocument();
   });
 
-  test('renders success popup on signup requiring verification and allows dismissal', async () => {
-    // Arrange: Force signup to return a verification requirement
-    authAPI.signup.mockResolvedValue({ requiresVerification: true });
+  test('navigates to AuthChoice when nav button is clicked', async () => {
+    render(<App />);
+    fireEvent.click(screen.getByTestId('nav-auth'));
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-choice')).toBeInTheDocument();
+    });
+  });
 
+  test('switches to Dashboard and hides footer after successful auth', async () => {
     render(<App />);
 
-    // Act: Navigate to AuthChoice and submit the signup form
+    // Navigate to auth view
     fireEvent.click(screen.getByTestId('nav-auth'));
-    fireEvent.submit(screen.getByTestId('signup-form'));
+    await waitFor(() => expect(screen.getByTestId('auth-choice')).toBeInTheDocument());
 
-    // Assert: Verify the success popup is rendered with the correct message
-    const successMessage = 'Account created. Enter the verification code sent to your email.';
-    const successPopup = await screen.findByText(successMessage);
-    expect(successPopup).toBeInTheDocument();
+    // Simulate successful login via onAuth callback
+    fireEvent.click(screen.getByTestId('simulate-auth-success'));
 
-    // Act: Click the dismiss button
-    const dismissButton = screen.getByText('Dismiss');
-    fireEvent.click(dismissButton);
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard')).toBeInTheDocument();
+      expect(screen.queryByTestId('footer')).not.toBeInTheDocument();
+    });
+  });
 
-    // Assert: Verify the success popup is removed from the DOM
-    expect(screen.queryByText(successMessage)).not.toBeInTheDocument();
+  test('onSwitchView from AuthChoice navigates back to home', async () => {
+    render(<App />);
+    fireEvent.click(screen.getByTestId('nav-auth'));
+    await waitFor(() => expect(screen.getByTestId('auth-choice')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('go-home'));
+    await waitFor(() => {
+      expect(screen.getByTestId('home')).toBeInTheDocument();
+    });
+  });
+
+  test('restores authenticated session from localStorage on mount', () => {
+    isAuthenticated.mockReturnValue(true);
+    getCurrentUser.mockReturnValue({ id: '1', email: 'user@example.com' });
+
+    render(<App />);
+    // Dashboard requires isAuth=true and currentView='dashboard'
+    // On mount it checks localStorage — session restored means isAuth=true
+    // but view stays 'home' unless redirected; Nav button should reflect auth state
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
   });
 });

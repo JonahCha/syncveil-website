@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 
-export default function Navigation({ onSwitchView, onScrollToSection }) {
+export default function Navigation({ onSwitchView, isAuthenticated }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => {
@@ -48,13 +48,15 @@ export default function Navigation({ onSwitchView, onScrollToSection }) {
             >
               Security Feed
             </button>
-            <button
-              type="button"
-              onClick={() => onSwitchView('auth-choice')}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors text-sm"
-            >
-              Sign In
-            </button>
+            {!isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => onSwitchView('auth-choice')}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors text-sm"
+              >
+                Sign In
+              </button>
+            )}
           </div>
 
           <button 
@@ -90,13 +92,15 @@ export default function Navigation({ onSwitchView, onScrollToSection }) {
             >
               Security Feed
             </button>
-            <button
-              type="button"
-              onClick={() => handleNavClick(() => onSwitchView('auth-choice'))}
-              className="block w-full text-left px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg"
-            >
-              Sign In
-            </button>
+            {!isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => handleNavClick(() => onSwitchView('auth-choice'))}
+                className="block w-full text-left px-3 py-2 text-base font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         )}
       </div>

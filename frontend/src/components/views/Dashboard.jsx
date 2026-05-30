@@ -108,7 +108,7 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
       try {
         const r = await dashboardAPI.uploadFile(file, pct=>setVault(p=>p.map(f=>f.id===tmp?{...f,progress:pct}:f)));
         const uf=r.file;
-        setVault(p=>p.map(f=>f.id===tmp?{...f,id:uf.id,file_name:uf.name,size_bytes:uf.size,uploaded_at:uf.uploaded_at,status:'secured',progress:100}:f));
+        setVault(p=>p.map(f=>f.id===tmp?{...f,id:uf.id,file_name:uf.file_name,size_bytes:uf.size_bytes,uploaded_at:uf.uploaded_at,status:'secured',progress:100}:f));
       } catch(err){
         setVault(p=>p.map(f=>f.id===tmp?{...f,status:'failed',error:err.message}:f));
         setUploadErr(err.message||'Upload failed');
@@ -142,7 +142,6 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
     try { await dashboardAPI.disconnectAccount(provider); setConnected(p=>p.filter(a=>a.provider!==provider)); } catch(e){ alert(e.message); }
   };
 
-  const isConn = p => connected.some(a=>a.provider===p);
   const connAcc = p => connected.find(a=>a.provider===p);
   const rl = sec?.risk_level||'low';
   const rc = RC[rl]||RC.low;
