@@ -161,7 +161,7 @@ class VaultFile(Base, TimestampMixin):
         Index("ix_vault_files_sha256", "sha256"),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     storage_filename: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -187,7 +187,7 @@ class AIFileAnalysis(Base, TimestampMixin):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    file_id: Mapped[int] = mapped_column(ForeignKey("vault_files.id", ondelete="CASCADE"), unique=True, nullable=False)
+    file_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("vault_files.id", ondelete="CASCADE"), unique=True, nullable=False)
     file_type: Mapped[str] = mapped_column(String(64), nullable=False)
     tags: Mapped[list[str] | None] = mapped_column(JSON)
     categories: Mapped[list[str] | None] = mapped_column(JSON)
@@ -207,7 +207,7 @@ class PrivacyScan(Base, TimestampMixin):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    file_id: Mapped[int] = mapped_column(ForeignKey("vault_files.id", ondelete="CASCADE"), unique=True, nullable=False)
+    file_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("vault_files.id", ondelete="CASCADE"), unique=True, nullable=False)
     severity: Mapped[str] = mapped_column(String(32), nullable=False)
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
     matches: Mapped[list[dict] | None] = mapped_column(JSON)
