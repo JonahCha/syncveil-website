@@ -11,6 +11,11 @@ from app.main import app
 
 if __name__ == "__main__":
     uvicorn_port = int(os.getenv("PORT", "8000"))
-    import uvicorn
+    try:
+        import uvicorn
+    except ImportError:
+        from app.main import run
 
-    uvicorn.run(app, host="0.0.0.0", port=uvicorn_port)
+        run(host="0.0.0.0", port=uvicorn_port)
+    else:
+        uvicorn.run(app, host="0.0.0.0", port=uvicorn_port)

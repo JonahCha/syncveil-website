@@ -23,6 +23,7 @@ slowapi==0.1.9
 # Utilities
 python-dotenv==1.0.0
 redis==5.0.1  # For session storage and rate limiting
+cryptography==44.0.0  # AES-256-GCM and secure key handling
 
 # Development
 pytest==7.4.3
