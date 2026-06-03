@@ -1,2 +1,0 @@
-"""SyncVeil backend application package."""
-
