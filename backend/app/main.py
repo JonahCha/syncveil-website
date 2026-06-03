@@ -1,122 +1,104 @@
-from __future__ import annotations
-
-import asyncio
-import time
-from collections import defaultdict
 from contextlib import asynccontextmanager
-
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-
+from app.auth.routes import router as auth_router
+from app.dashboard_routes import router as dashboard_router
+from app.vault_routes import router as vault_router
 from app.core.config import get_settings
-from app.core.database import init_db
-from app.core.security import ensure_https
-from app.routes.auth import router as auth_router
-from app.routes.dashboard import router as dashboard_router
-from app.routes.devices import router as devices_router
-from app.routes.files import router as vault_router
-from app.routes.public import router as public_router
-from app.routes.security import router as security_router
 
 settings = get_settings()
 
-
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        if settings.tls_enforce and settings.env == "production" and not ensure_https(request.scope):
-            return JSONResponse({"detail": "HTTPS required"}, status_code=403)
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; "
-            "img-src 'self' data: https:; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com; "
-            "script-src 'self'; "
-            "connect-src 'self' https:; "
-            "frame-ancestors 'none'"
-        )
-        if settings.env == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
-        return response
-
-
-class SimpleRateLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app):
-        super().__init__(app)
-        self.window_seconds = 60
-        self.buckets: dict[str, list[float]] = defaultdict(list)
-        self.limits = {
-            "/auth/login": 20,
-            "/auth/signup": 10,
-            "/auth/forgot-password": 10,
-            "/auth/reset-password": 10,
-            "/auth/resend-verification": 10,
-            "/auth/oauth": 30,
-            "/api/vault/upload": 20,
-        }
-
-    async def dispatch(self, request: Request, call_next):
-        if request.method in {"GET", "HEAD", "OPTIONS"}:
-            return await call_next(request)
-        path = request.url.path
-        limit = next((value for route, value in self.limits.items() if path.startswith(route)), 120)
-        ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
-        key = f"{ip}:{path}"
-        now = time.time()
-        window = [stamp for stamp in self.buckets[key] if now - stamp < self.window_seconds]
-        if len(window) >= limit:
-            return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
-        window.append(now)
-        self.buckets[key] = window
-        return await call_next(request)
+def _apply_schema(engine):
+    from sqlalchemy import text
+    stmts = [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name    VARCHAR(255)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone        VARCHAR(50)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS country      VARCHAR(100)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url   VARCHAR(500)",
+        "ALTER TABLE login_logs ADD COLUMN IF NOT EXISTS location VARCHAR(255)",
+        """CREATE TABLE IF NOT EXISTS connected_accounts (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL REFERENCES users(id),
+            provider VARCHAR(50) NOT NULL,
+            provider_user_id VARCHAR(255) NOT NULL,
+            email VARCHAR(255), display_name VARCHAR(255),
+            avatar_url VARCHAR(500), access_token TEXT, refresh_token TEXT,
+            connected_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            last_synced_at TIMESTAMP)""",
+        "CREATE INDEX IF NOT EXISTS idx_connected_account_user ON connected_accounts(user_id, provider)",
+        """CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL REFERENCES users(id),
+            otp_hash VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            expires_at TIMESTAMP NOT NULL,
+            used BOOLEAN NOT NULL DEFAULT FALSE,
+            used_at TIMESTAMP, ip_address VARCHAR(45))""",
+        "CREATE INDEX IF NOT EXISTS idx_pwd_reset_user ON password_reset_tokens(user_id, used)",
+        """CREATE TABLE IF NOT EXISTS vault_files (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL REFERENCES users(id),
+            file_name VARCHAR(500) NOT NULL,
+            content_type VARCHAR(200) NOT NULL DEFAULT 'application/octet-stream',
+            size_bytes BIGINT NOT NULL DEFAULT 0,
+            sha256 VARCHAR(64),
+            encrypted_data BYTEA NOT NULL,
+            nonce BYTEA NOT NULL,
+            uploaded_at TIMESTAMP NOT NULL DEFAULT NOW())""",
+        "CREATE INDEX IF NOT EXISTS idx_vault_user ON vault_files(user_id, uploaded_at)",
+        "ALTER TABLE vault_files ADD COLUMN IF NOT EXISTS container_size BIGINT",
+        "ALTER TABLE vault_files ADD COLUMN IF NOT EXISTS hmac VARCHAR(64)",
+        "ALTER TABLE vault_files ADD COLUMN IF NOT EXISTS encrypted_file_key BYTEA",
+        "ALTER TABLE vault_files ADD COLUMN IF NOT EXISTS compression_type VARCHAR(20) NOT NULL DEFAULT 'zstd'",
+        "ALTER TABLE vault_files ADD COLUMN IF NOT EXISTS encryption_version INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE vault_files ADD COLUMN IF NOT EXISTS storage_backend VARCHAR(50) NOT NULL DEFAULT 'postgresql'",
+        "ALTER TABLE vault_files ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE vault_files ADD COLUMN IF NOT EXISTS malware_scan_status VARCHAR(20) NOT NULL DEFAULT 'skipped'",
+        "ALTER TABLE vault_files ADD COLUMN IF NOT EXISTS malware_scan_at TIMESTAMP",
+        "ALTER TABLE vault_files ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP",
+        """CREATE TABLE IF NOT EXISTS vault_audit_logs (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            file_id UUID REFERENCES vault_files(id) ON DELETE SET NULL,
+            event_type VARCHAR(50) NOT NULL,
+            ip_address VARCHAR(45), user_agent TEXT, detail TEXT,
+            success BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW())""",
+        "CREATE INDEX IF NOT EXISTS idx_vault_audit_user_time ON vault_audit_logs(user_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_vault_audit_file ON vault_audit_logs(file_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_vault_audit_event ON vault_audit_logs(event_type, created_at)",
+    ]
+    with engine.begin() as conn:
+        for s in stmts:
+            try: conn.execute(text(s.strip()))
+            except Exception as e: print(f"⚠ schema: {e}")
+    print("✅ Schema up to date")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    init_db()
+async def lifespan(_app: FastAPI):
+    try:
+        from app.db.session import engine
+        from app.db.base import Base
+        if engine is None:
+            print("⚠ DATABASE_URL not set")
+        else:
+            Base.metadata.create_all(bind=engine)
+            print("✅ Database tables initialized successfully")
+            _apply_schema(engine)
+    except Exception as e:
+        print(f"⚠ DB init warning: {e}")
     yield
 
+app = FastAPI(title="SyncVeil API", lifespan=lifespan)
 
-app = FastAPI(
-    title="SyncVeil Security Platform",
-    version="2.0.0",
-    docs_url="/docs",
-    redoc_url=None,
-    lifespan=lifespan,
-)
+origins = list({o.rstrip("/") for o in settings.cors_origins_list if o != "*"} | {settings.FRONTEND_URL.rstrip("/")} - {""})
+app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(SimpleRateLimitMiddleware)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.get("/health")
+def health(): return {"status": "ok"}
 
-app.include_router(public_router)
-app.include_router(auth_router)
-app.include_router(vault_router)
-app.include_router(security_router)
+app.include_router(auth_router, prefix="/auth")
 app.include_router(dashboard_router)
-app.include_router(devices_router)
-
-
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    return JSONResponse({"detail": "Internal server error"}, status_code=500)
-
-
-def run(host: str = "0.0.0.0", port: int = 8000) -> None:
-    try:
-        import uvicorn
-    except ImportError:
-        raise RuntimeError("uvicorn is required to run the backend server")
-    uvicorn.run("app.main:app", host=host, port=port, reload=False)
+app.include_router(vault_router)

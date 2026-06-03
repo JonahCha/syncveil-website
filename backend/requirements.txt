@@ -4,8 +4,8 @@ uvicorn[standard]==0.32.1
 
 # Database
 sqlalchemy==2.0.36
-psycopg2-binary==2.9.10  # PostgreSQL adapter - updated for Python 3.13 support
-alembic==1.13.1  # Database migrations
+psycopg2-binary==2.9.10
+alembic==1.13.1
 
 # Data Validation
 pydantic[email]==2.10.3
@@ -13,19 +13,28 @@ pydantic-settings>=2.0
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
+cryptography>=41.0.0
 python-multipart==0.0.19
-argon2-cffi==23.1.0  # Secure password hashing
-pyotp==2.9.0  # OTP generation
+argon2-cffi==23.1.0
+pyotp==2.9.0
+
+# HTTP Client (OAuth, threat intel, geolocation)
+httpx>=0.25.0
+
+# DNS record checking (SPF/DKIM/DMARC — free, no API key)
+dnspython>=2.4.0
 
 # Rate Limiting
 slowapi==0.1.9
 
 # Utilities
 python-dotenv==1.0.0
-redis==5.0.1  # For session storage and rate limiting
-cryptography==44.0.0  # AES-256-GCM and secure key handling
+redis==5.0.1
 
-# Development
+# Development / Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1
-httpx==0.25.2
+
+# SSCE — Secure Container Engine
+zstandard>=0.22.0
+clamd>=1.0.2

@@ -61,10 +61,139 @@ const TABS = [
   { id:'email',    label:'Email Security', svg: <><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></> },
   { id:'vault',    label:'Encrypted Vault', svg: <><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></> },
   { id:'monitor',  label:'Security Monitor', svg: <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/> },
+  { id:'intel',    label:'Intelligence', svg: <><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></> },
   { id:'settings', label:'Settings', svg: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></> },
 ];
 
 const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Brazil','Canada','Chile','China','Colombia','Croatia','Czech Republic','Denmark','Egypt','Ethiopia','Finland','France','Germany','Ghana','Greece','Hungary','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kenya','Malaysia','Mexico','Morocco','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Peru','Philippines','Poland','Portugal','Romania','Russia','Saudi Arabia','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Taiwan','Thailand','Turkey','Ukraine','United Arab Emirates','United Kingdom','United States','Vietnam','Other'];
+
+
+// ── Live Threat Feed (URLhaus) ────────────────────────────────────────────────
+function IntelFeedTab() {
+  const [feed, setFeed]     = useState(null);
+  const [loading, setLoad]  = useState(false);
+  const [filter, setFilter] = useState('');
+
+  const load = async () => {
+    setLoad(true);
+    try {
+      const r = await dashboardAPI.getThreatFeed(30);
+      setFeed(r);
+    } catch(e) { setFeed({available:false,reason:e.message}); }
+    finally { setLoad(false); }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const items = (feed?.items||[]).filter(i =>
+    !filter || i.threat?.toLowerCase().includes(filter.toLowerCase()) ||
+    i.url?.toLowerCase().includes(filter.toLowerCase()) ||
+    (i.tags||[]).some(t => t.toLowerCase().includes(filter.toLowerCase()))
+  );
+
+  const threatColor = t => {
+    if(!t) return 'muted';
+    const l = t.toLowerCase();
+    if(l.includes('malware')||l.includes('botnet')) return 'danger';
+    if(l.includes('phishing')) return 'warning';
+    if(l.includes('exploit')) return 'purple';
+    return 'info';
+  };
+
+  return (
+    <div className="grid">
+      <section className="col-12 card">
+        <div className="card-head">
+          <div className="card-title-wrap">
+            <span className="eyebrow">URLhaus · abuse.ch</span>
+            <h2 className="card-title">Live malware & phishing feed</h2>
+          </div>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <input
+              className="input" style={{width:200,padding:'6px 10px',fontSize:12}}
+              placeholder="Filter by threat / tag…"
+              value={filter} onChange={e=>setFilter(e.target.value)}
+            />
+            <button className="btn btn--ghost btn--sm" onClick={load} disabled={loading}>
+              {loading ? <span className="adm-spinner" style={{width:13,height:13,borderWidth:2}}/> : 'Refresh'}
+            </button>
+          </div>
+        </div>
+
+        {!feed?.available && feed?.reason && (
+          <div className="adm-alert danger" style={{marginBottom:16}}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            {feed.reason}
+          </div>
+        )}
+
+        {loading && <div style={{display:'flex',justifyContent:'center',padding:'32px 0'}}><div className="adm-spinner lg"/></div>}
+
+        {!loading && items.length === 0 && (
+          <p style={{textAlign:'center',color:'var(--t-muted)',fontSize:13,padding:'32px 0'}}>No feed items match your filter.</p>
+        )}
+
+        {!loading && items.length > 0 && (
+          <>
+            <div style={{display:'flex',gap:16,marginBottom:16,fontSize:12,color:'var(--t-muted)'}}>
+              <span>Showing <strong style={{color:'var(--t-base)'}}>{items.length}</strong> entries</span>
+              <span>Source: <strong style={{color:'var(--primary)'}}>URLhaus / abuse.ch</strong> — free, no API key required</span>
+            </div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th style={{width:'40%'}}>URL</th>
+                  <th>Threat type</th>
+                  <th>Tags</th>
+                  <th>Country</th>
+                  <th>Date added</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item,i) => (
+                  <tr key={i}>
+                    <td>
+                      <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,color:'var(--t-base)',
+                        maxWidth:320,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
+                        title={item.url}>
+                        {item.url}
+                      </div>
+                      {item.reporter && (
+                        <div className="cell-muted">Reporter: {item.reporter}</div>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`tag ${threatColor(item.threat)}`}>
+                        {item.threat||'unknown'}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:3}}>
+                        {(item.tags||[]).slice(0,3).map((t,j)=>(
+                          <span key={j} className="tag muted" style={{fontSize:10}}>{t}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="cell-muted">{item.country||'—'}</td>
+                    <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,color:'var(--t-light)',whiteSpace:'nowrap'}}>
+                      {item.date?.slice(0,10)||'—'}
+                    </td>
+                    <td>
+                      <span className={`badge ${item.url_status==='online'?'danger':item.url_status==='offline'?'success':'muted'}`}>
+                        {item.url_status||'—'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
 
 export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
   const [tab,    setTab]    = useState('overview');
@@ -86,24 +215,40 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
   const [profSaved,setProfSaved]  = useState(false);
   const [connecting,setConnecting]= useState('');
   const [toast,setToast]          = useState(null);
+  const [intel,setIntel]          = useState(null);
+  const [intelLoading,setIntelLoading] = useState(false);
+  const [intelTab,setIntelTab]    = useState('breaches');
   const [drag,setDrag]            = useState(false);
+  const [vaultStats,setVaultStats] = useState(null);
+  const [checkingId,setCheckingId] = useState(null);
   const fileRef = useRef(null);
 
   const toggleTheme = () => setTheme(t => { const n=t==='dark'?'light':'dark'; try{localStorage.setItem('sv-theme',n);}catch{} return n; });
   const showToast = (msg, type='success') => { setToast({msg,type}); setTimeout(()=>setToast(null),4000); };
 
+  const loadIntel = async () => {
+    setIntelLoading(true);
+    try {
+      const r = await dashboardAPI.getThreatScan();
+      setIntel(r);
+    } catch(e) { showToast(e.message||'Intelligence scan failed','error'); }
+    finally { setIntelLoading(false); }
+  };
+
   const loadAll = useCallback(async (silent=false) => {
     if(!silent) setLoading(true); else setRefreshing(true);
-    const [d,s,e,b,v,em,p] = await Promise.allSettled([
+    const [d,s,e,b,v,em,p,vs] = await Promise.allSettled([
       dashboardAPI.getDashboardData(), dashboardAPI.getSecurityOverview(),
       dashboardAPI.getSecurityEvents(25), dashboardAPI.getBreachData(),
       dashboardAPI.getVaultFiles(), dashboardAPI.getEmailSecurity(), dashboardAPI.getProfile(),
+      dashboardAPI.getVaultStorageStats(),
     ]);
     if(d.status==='fulfilled'){ const r=d.value?.data||d.value; setDash(r); setConnected(r?.connectedAccounts||[]); }
     if(s.status==='fulfilled') setSec(s.value?.data||s.value);
     if(e.status==='fulfilled') setEvents(e.value?.data?.events||[]);
     if(b.status==='fulfilled') setBreaches(b.value?.breaches?.breaches||[]);
     if(v.status==='fulfilled') setVault((v.value?.files||[]).map(f=>({...f,status:'secured'})));
+    if(vs?.status==='fulfilled') setVaultStats(vs.value);
     if(em.status==='fulfilled') setEmailSec(em.value);
     if(p.status==='fulfilled'){ const pr=p.value; setProfile(pr); setProfForm({full_name:pr.full_name||'',phone:pr.phone||'',country:pr.country||'',date_of_birth:pr.date_of_birth||''}); }
     setLoading(false); setRefreshing(false); setLastRefreshed(new Date());
@@ -125,6 +270,16 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
     }
   };
   const deleteFile = async id => { if(!confirm('Delete this file?')) return; try{ await dashboardAPI.deleteVaultFile(id); setVault(p=>p.filter(f=>f.id!==id)); showToast('File deleted.'); }catch(e){ showToast(e.message,'error'); } };
+  const downloadFile = async (id, name) => { try{ showToast('Preparing download…','info'); await dashboardAPI.downloadVaultFile(id, name); }catch(e){ showToast(e.message||'Download failed','error'); } };
+  const checkIntegrity = async (id) => {
+    setCheckingId(id);
+    try{
+      const r = await dashboardAPI.checkFileIntegrity(id);
+      if(r.integrity?.integrity_ok) showToast('✓ Integrity verified — file is intact.');
+      else showToast('⚠ Integrity check FAILED — file may be corrupted.','error');
+    }catch(e){ showToast(e.message||'Check failed','error'); }
+    finally{ setCheckingId(null); }
+  };
   const saveProfile = async () => { setProfSaving(true); try{ await dashboardAPI.updateProfile(profForm); setProfSaved(true); showToast('Profile saved.'); setTimeout(()=>setProfSaved(false),3000); }catch(e){ showToast(e.message||'Save failed.','error'); } finally{ setProfSaving(false); } };
   const connectProvider = async provider => {
     setConnecting(provider);
@@ -432,13 +587,13 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
             )}
 
             {/* ── VAULT ── */}
-            {tab==='vault' && (
+{tab==='vault' && (
               <>
                 <section className="hero">
                   <div className="hero-text">
-                    <span className="eyebrow">Encrypted Vault</span>
-                    <h1 className="hero-title">Secure <span className="accent">File Vault</span></h1>
-                    <p className="hero-sub">Store and manage your encrypted files. All data is encrypted at rest.</p>
+                    <span className="eyebrow">Secure Container Engine</span>
+                    <h1 className="hero-title">SSCE <span className="accent">Encrypted Vault</span></h1>
+                    <p className="hero-sub">Files are malware-scanned, compressed, then AES-256-GCM encrypted in a signed .syncveil container before storage.</p>
                   </div>
                   <div className="hero-actions">
                     <button className="btn btn--primary" onClick={()=>fileRef.current?.click()}>
@@ -447,11 +602,63 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
                     <input ref={fileRef} type="file" multiple style={{display:'none'}} onChange={e=>upload(Array.from(e.target.files||[]))}/>
                   </div>
                 </section>
+
+                {/* ── Vault KPI row ── */}
+                <div className="grid" style={{marginBottom:0}}>
+                  <div className="col-3">
+                    <article className="kpi-card c-primary">
+                      <div className="kpi-top"><div className="kpi-identity"><div className="kpi-icon primary"><Lock size={16}/></div><div className="kpi-label">Encrypted Files</div></div></div>
+                      <div className="kpi-value">{vault.filter(f=>f.status!=='uploading').length}</div>
+                    </article>
+                  </div>
+                  <div className="col-3">
+                    <article className="kpi-card c-success">
+                      <div className="kpi-top"><div className="kpi-identity"><div className="kpi-icon success"><Shield size={16}/></div><div className="kpi-label">Vault Health</div></div></div>
+                      <div className="kpi-value">{vaultStats?.vault_health_score ?? '—'}<sup style={{fontSize:14}}>%</sup></div>
+                    </article>
+                  </div>
+                  <div className="col-3">
+                    <article className="kpi-card c-warning">
+                      <div className="kpi-top"><div className="kpi-identity"><div className="kpi-icon warning"><AlertTriangle size={16}/></div><div className="kpi-label">Malware Blocked</div></div></div>
+                      <div className="kpi-value">{vaultStats?.malware_blocked ?? 0}</div>
+                    </article>
+                  </div>
+                  <div className="col-3">
+                    <article className="kpi-card c-primary">
+                      <div className="kpi-top"><div className="kpi-identity"><div className="kpi-icon primary"><Activity size={16}/></div><div className="kpi-label">Integrity Failures</div></div></div>
+                      <div className="kpi-value">{vaultStats?.integrity_fails ?? 0}</div>
+                    </article>
+                  </div>
+                </div>
+
+                {/* ── Storage quota bar ── */}
+                {vaultStats && (
+                  <div className="grid" style={{marginBottom:0}}>
+                    <section className="col-12 card" style={{paddingTop:16,paddingBottom:16}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                        <span style={{fontSize:13,fontWeight:600}}>Storage Usage</span>
+                        <span style={{fontSize:12,color:'var(--t-muted)'}}>
+                          {fmt(vaultStats.total_size_bytes)} / {fmt(vaultStats.quota_bytes)} used
+                          <span style={{marginLeft:8,color: vaultStats.quota_used_pct>85?'var(--danger)':vaultStats.quota_used_pct>60?'var(--warning)':'var(--success)'}}>
+                            ({vaultStats.quota_used_pct}%)
+                          </span>
+                        </span>
+                      </div>
+                      <div className="progress" style={{height:8,borderRadius:4}}>
+                        <div className="progress-fill gradient" style={{
+                          width:`${Math.min(100,vaultStats.quota_used_pct)}%`,
+                          background: vaultStats.quota_used_pct>85?'var(--danger)':undefined
+                        }}/>
+                      </div>
+                    </section>
+                  </div>
+                )}
+
                 <div className="grid">
                   <section className="col-12 card">
                     <div className="card-head">
                       <div className="card-title-wrap">
-                        <span className="eyebrow">Vault</span>
+                        <span className="eyebrow">Vault · AES-256-GCM · Zstd · HMAC-SHA256</span>
                         <h2 className="card-title">Encrypted files — {vault.length} stored</h2>
                       </div>
                     </div>
@@ -462,7 +669,8 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
                       onDrop={e=>{e.preventDefault();setDrag(false);upload(Array.from(e.dataTransfer.files));}}
                       onClick={()=>fileRef.current?.click()}>
                       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
-                      <p><strong>Click to upload</strong> or drag and drop files here.<br/><span style={{fontSize:12}}>All files are encrypted end-to-end.</span></p>
+                      <p><strong>Click to upload</strong> or drag and drop files here.<br/>
+                      <span style={{fontSize:12}}>Scanned → Compressed (Zstd) → Encrypted (AES-256-GCM) → Signed (HMAC-SHA256)</span></p>
                     </div>
                     <div style={{marginTop:20}}>
                       {vault.length===0
@@ -472,9 +680,15 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
                             <div className="file-icon">
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
                             </div>
-                            <div className="file-meta">
+                            <div className="file-meta" style={{flex:1}}>
                               <div className="file-name">{f.file_name}</div>
-                              <div className="file-size">{fmt(f.size_bytes)} · {f.uploaded_at?fmtDate(f.uploaded_at):'uploading…'}</div>
+                              <div className="file-size">
+                                {fmt(f.size_bytes)}
+                                {f.compression_type && <span style={{marginLeft:6,opacity:.6}}>· {f.compression_type}</span>}
+                                {f.encryption_version && <span style={{marginLeft:6,opacity:.6}}>· AES-GCM v{f.encryption_version}</span>}
+                                {f.malware_scan_status && <span style={{marginLeft:6,opacity:.6}}>· scan: {f.malware_scan_status}</span>}
+                                <span style={{marginLeft:6,opacity:.6}}>· {f.uploaded_at?fmtDate(f.uploaded_at):'uploading…'}</span>
+                              </div>
                               {f.status==='uploading' && f.progress!=null && (
                                 <div className="progress" style={{marginTop:6}}>
                                   <div className="progress-fill gradient" style={{width:`${f.progress}%`}}/>
@@ -482,11 +696,19 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
                               )}
                             </div>
                             <span className={`badge ${f.status==='secured'?'success':f.status==='failed'?'danger':'info'}`}>{f.status}</span>
-                            {f.status!=='uploading' && (
-                              <button className="icon-btn" onClick={()=>deleteFile(f.id)} title="Delete">
+                            {f.status!=='uploading' && (<>
+                              <button className="icon-btn" onClick={()=>downloadFile(f.id,f.file_name)} title="Download" style={{marginLeft:4}}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                              </button>
+                              <button className="icon-btn" onClick={()=>checkIntegrity(f.id)} title="Verify integrity" style={{marginLeft:4}} disabled={checkingId===f.id}>
+                                {checkingId===f.id
+                                  ? <span className="adm-spinner" style={{width:13,height:13,borderWidth:2}}/>
+                                  : <CheckCircle size={15}/>}
+                              </button>
+                              <button className="icon-btn" onClick={()=>deleteFile(f.id)} title="Delete" style={{marginLeft:4}}>
                                 <Trash2 size={15}/>
                               </button>
-                            )}
+                            </>)}
                           </div>
                         ))
                       }
@@ -578,6 +800,277 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
                     }
                   </section>
                 </div>
+              </>
+            )}
+
+
+            {/* ── INTELLIGENCE ── */}
+            {tab==='intel' && (
+              <>
+                <section className="hero">
+                  <div className="hero-text">
+                    <span className="eyebrow">Threat Intelligence</span>
+                    <h1 className="hero-title">Security <span className="accent">Intelligence</span></h1>
+                    <p className="hero-sub">Real-time breach monitoring via HaveIBeenPwned, LeakCheck, DNS health checks, IP reputation via AbuseIPDB, and URLhaus malware feeds.</p>
+                  </div>
+                  <div className="hero-actions">
+                    <button className="btn btn--primary" onClick={loadIntel} disabled={intelLoading}>
+                      {intelLoading
+                        ? <><span className="adm-spinner" style={{width:14,height:14,borderWidth:2}}/> Scanning…</>
+                        : <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:14,height:14}}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Run scan</>
+                      }
+                    </button>
+                  </div>
+                </section>
+
+                {!intel && !intelLoading && (
+                  <div className="adm-alert info" style={{marginBottom:24}}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <div>Click <strong>Run scan</strong> to check your email against HaveIBeenPwned, LeakCheck, DNS records, and recent IP reputation data.</div>
+                  </div>
+                )}
+
+                {intelLoading && (
+                  <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:24}}>
+                    {['Querying HaveIBeenPwned breach database…','Checking LeakCheck dark-web sources…','Analysing DNS records (SPF/DKIM/DMARC)…','Checking IP reputation via AbuseIPDB…'].map((m,i)=>(
+                      <div key={i} className="adm-alert info" style={{animationDelay:`${i*120}ms`}}>
+                        <span className="adm-spinner" style={{width:14,height:14,borderWidth:2,flexShrink:0}}/>
+                        <span>{m}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {intel && (
+                  <>
+                    {/* Summary cards */}
+                    <div className="kpi-grid" style={{marginBottom:20}}>
+                      <KpiCard label="Total Breaches" value={intel.total_breaches} iconKind={intel.total_breaches>0?'danger':'success'}
+                        pill={intel.total_breaches>0?'Exposed':'Clean'} pillKind={intel.total_breaches>0?'down':'up'}
+                        compare={<>across HIBP + LeakCheck</>}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      </KpiCard>
+                      <KpiCard label="DNS Score" value={intel.dns?.score??0} sup="/100" iconKind={intel.dns?.score>=70?'success':intel.dns?.score>=40?'warning':'danger'}
+                        pill={intel.dns?.score>=70?'Healthy':intel.dns?.score>=40?'Partial':'Insecure'} pillKind={intel.dns?.score>=70?'up':intel.dns?.score>=40?'neutral':'down'}
+                        compare={<>SPF + DMARC + DKIM</>}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      </KpiCard>
+                      <KpiCard label="Malicious IPs" value={intel.ip_reputation?.filter(r=>r.is_malicious).length??0} iconKind={intel.ip_reputation?.some(r=>r.is_malicious)?'danger':'success'}
+                        pill="Login IPs" pillKind="neutral"
+                        compare={<>{intel.ip_reputation?.length??0} IPs checked via AbuseIPDB</>}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                      </KpiCard>
+                      <KpiCard label="Risk Level" value={intel.risk?.charAt(0).toUpperCase()+intel.risk?.slice(1)} iconKind={intel.risk==='low'?'success':intel.risk==='medium'?'warning':'danger'}
+                        pill={intel.risk==='low'?'Protected':intel.risk==='critical'?'Act now':'Review'} pillKind={intel.risk==='low'?'up':intel.risk==='critical'?'down':'neutral'}
+                        compare={<>overall threat assessment</>}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                      </KpiCard>
+                    </div>
+
+                    {/* Recommendations */}
+                    {intel.summary?.recommendation?.length > 0 && (
+                      <div className="card" style={{marginBottom:20}}>
+                        <div className="card-head">
+                          <div className="card-title-wrap">
+                            <span className="eyebrow">Action Required</span>
+                            <h2 className="card-title">Recommendations</h2>
+                          </div>
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                          {intel.summary.recommendation.map((r,i)=>(
+                            <div key={i} className={`adm-alert ${i===0&&intel.total_breaches>0?'danger':intel.risk==='low'?'success':'warning'}`}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                              <span>{r}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-tabs */}
+                    <div className="tabs">
+                      {[['breaches','Breach Data'],['dns','DNS Health'],['ips','IP Reputation'],['feed','Live Threat Feed']].map(([id,label])=>(
+                        <button key={id} className={`tab${intelTab===id?' is-active':''}`} onClick={()=>setIntelTab(id)}>{label}</button>
+                      ))}
+                    </div>
+
+                    {/* Breach Data sub-tab */}
+                    {intelTab==='breaches' && (
+                      <div className="grid">
+                        {/* HIBP */}
+                        <section className="col-6 card">
+                          <div className="card-head">
+                            <div className="card-title-wrap">
+                              <span className="eyebrow">HaveIBeenPwned</span>
+                              <h2 className="card-title">Known breaches</h2>
+                            </div>
+                            {intel.hibp?.available
+                              ? <span className={`badge ${intel.hibp.count>0?'danger':'success'}`}>{intel.hibp.count>0?`${intel.hibp.count} found`:'All clear'}</span>
+                              : <span className="badge">{intel.hibp?.reason||'No API key'}</span>
+                            }
+                          </div>
+                          {!intel.hibp?.available
+                            ? <div className="adm-alert warning">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                                <div><strong>HIBP_API_KEY not set.</strong> Add it to Render environment variables. Get your key at <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>haveibeenpwned.com/API/Key</span></div>
+                              </div>
+                            : intel.hibp.count===0
+                              ? <div className="adm-alert success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><div><strong>Not found in any breaches.</strong> Your email does not appear in HIBP's database of {(3e9).toLocaleString()}+ compromised accounts.</div></div>
+                              : (
+                                <table className="table">
+                                  <thead><tr><th>Service</th><th>Date</th><th>Records</th><th>Severity</th></tr></thead>
+                                  <tbody>
+                                    {intel.hibp.breaches.map((b,i)=>(
+                                      <tr key={i}>
+                                        <td><div className="cell-name">{b.title||b.name}</div><div className="cell-muted">{b.domain}</div></td>
+                                        <td className="cell-muted">{b.date}</td>
+                                        <td className="cell-mono">{b.pwn_count?.toLocaleString?.()}</td>
+                                        <td><span className={`tag ${severityTag(b.severity)}`}>{b.severity}</span></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )
+                          }
+                        </section>
+
+                        {/* LeakCheck */}
+                        <section className="col-6 card">
+                          <div className="card-head">
+                            <div className="card-title-wrap">
+                              <span className="eyebrow">LeakCheck</span>
+                              <h2 className="card-title">Dark-web sources</h2>
+                            </div>
+                            {intel.leakcheck?.available
+                              ? <span className={`badge ${intel.leakcheck.found?'danger':'success'}`}>{intel.leakcheck.found?`${intel.leakcheck.count} source(s)`:'Clean'}</span>
+                              : <span className="badge">{intel.leakcheck?.reason||'No API key'}</span>
+                            }
+                          </div>
+                          {!intel.leakcheck?.available
+                            ? <div className="adm-alert warning">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                                <div><strong>LEAKCHECK_API_KEY not set.</strong> Free tier available at <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>leakcheck.io</span></div>
+                              </div>
+                            : !intel.leakcheck.found
+                              ? <div className="adm-alert success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><div><strong>Not found in dark-web leaks.</strong> Your credentials were not found in LeakCheck's database.</div></div>
+                              : (
+                                <table className="table">
+                                  <thead><tr><th>Source</th><th>Date</th><th>Entries</th><th>Fields exposed</th></tr></thead>
+                                  <tbody>
+                                    {intel.leakcheck.sources.map((s,i)=>(
+                                      <tr key={i}>
+                                        <td className="cell-name">{s.name}</td>
+                                        <td className="cell-muted">{s.date||'Unknown'}</td>
+                                        <td className="cell-mono">{s.entries?.toLocaleString?.()}</td>
+                                        <td><div style={{display:'flex',flexWrap:'wrap',gap:4}}>{(s.fields||[]).map((f,j)=><span key={j} className="tag purple">{f}</span>)}</div></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )
+                          }
+                        </section>
+                      </div>
+                    )}
+
+                    {/* DNS Health sub-tab */}
+                    {intelTab==='dns' && (
+                      <div className="grid">
+                        <section className="col-12 card">
+                          <div className="card-head">
+                            <div className="card-title-wrap">
+                              <span className="eyebrow">DNS Security Records</span>
+                              <h2 className="card-title">{intel.domain} — email domain health</h2>
+                            </div>
+                            <span className={`badge ${intel.dns?.score>=70?'success':intel.dns?.score>=40?'warning':'danger'}`}>Score: {intel.dns?.score??0}/100</span>
+                          </div>
+                          {intel.dns?.error
+                            ? <div className="adm-alert warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg><div>{intel.dns.error}</div></div>
+                            : (
+                              <>
+                                <div className="grid" style={{marginBottom:20}}>
+                                  {[
+                                    {key:'spf',  label:'SPF',   desc:'Sender Policy Framework — prevents email spoofing',    detail: intel.dns?.spf?.strength ? `Strength: ${intel.dns.spf.strength}` : null},
+                                    {key:'dmarc',label:'DMARC', desc:'Domain Message Auth — defines breach handling policy',  detail: intel.dns?.dmarc?.policy ? `Policy: ${intel.dns.dmarc.policy}` : null},
+                                    {key:'dkim', label:'DKIM',  desc:'DomainKeys Identified Mail — cryptographic signature', detail: intel.dns?.dkim?.selector ? `Selector: ${intel.dns.dkim.selector}` : null},
+                                  ].map(({key,label,desc,detail})=>{
+                                    const rec = intel.dns?.[key]||{};
+                                    return (
+                                      <div key={key} className="col-4 card" style={{boxShadow:'none',border:'1px solid var(--border-soft)',gap:12}}>
+                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                          <div style={{fontSize:15,fontWeight:700,fontFamily:'Inter Tight,sans-serif',letterSpacing:'-0.02em'}}>{label}</div>
+                                          <span className={`badge ${rec.valid?'success':rec.exists?'warning':'danger'}`}>{rec.valid?'PASS':rec.exists?'WEAK':'MISSING'}</span>
+                                        </div>
+                                        <div style={{fontSize:12,color:'var(--t-muted)',lineHeight:1.5}}>{desc}</div>
+                                        {detail && <div style={{fontSize:11,color:'var(--t-light)',fontFamily:'JetBrains Mono,monospace'}}>{detail}</div>}
+                                        {rec.record && <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:10.5,color:'var(--t-muted)',wordBreak:'break-all',background:'var(--bg-muted)',borderRadius:8,padding:'8px 10px',lineHeight:1.6}}>{rec.record}</div>}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                {intel.dns?.mx?.records?.length > 0 && (
+                                  <div>
+                                    <div style={{fontSize:12,fontWeight:600,color:'var(--t-muted)',marginBottom:8,fontFamily:'JetBrains Mono,monospace',letterSpacing:'0.1em',textTransform:'uppercase'}}>MX Records</div>
+                                    {intel.dns.mx.records.map((mx,i)=>(
+                                      <div key={i} style={{display:'flex',gap:12,padding:'8px 0',borderBottom:'1px solid var(--border-soft)',fontSize:13}}>
+                                        <span style={{fontFamily:'JetBrains Mono,monospace',color:'var(--t-light)',minWidth:40}}>{mx.preference}</span>
+                                        <span style={{color:'var(--t-base)',fontWeight:500}}>{mx.exchange}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
+                            )
+                          }
+                        </section>
+                      </div>
+                    )}
+
+                    {/* IP Reputation sub-tab */}
+                    {intelTab==='ips' && (
+                      <div className="grid">
+                        <section className="col-12 card">
+                          <div className="card-head">
+                            <div className="card-title-wrap">
+                              <span className="eyebrow">AbuseIPDB</span>
+                              <h2 className="card-title">Login IP reputation</h2>
+                            </div>
+                            <span className="badge info">{intel.ip_reputation?.length??0} IPs checked</span>
+                          </div>
+                          {(!intel.ip_reputation||intel.ip_reputation.length===0)
+                            ? <div className="adm-alert info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>No login IPs found yet. Log in from more devices to build a reputation report.</div></div>
+                            : !intel.ip_reputation[0]?.available
+                              ? <div className="adm-alert warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg><div><strong>ABUSEIPDB_API_KEY not set.</strong> Get a free key at <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>abuseipdb.com/register</span></div></div>
+                              : (
+                                <table className="table">
+                                  <thead><tr><th>IP Address</th><th>Country / ISP</th><th>Abuse Score</th><th>Reports</th><th>Status</th></tr></thead>
+                                  <tbody>
+                                    {intel.ip_reputation.map((ip,i)=>(
+                                      <tr key={i}>
+                                        <td className="cell-mono">{ip.ip}</td>
+                                        <td><div className="cell-name">{ip.country}</div><div className="cell-muted">{ip.isp}</div></td>
+                                        <td>
+                                          <div style={{display:'flex',alignItems:'center',gap:8}}>
+                                            <div className="progress" style={{width:80,flexShrink:0}}><div className={`progress-fill ${ip.abuse_score>50?'danger':ip.abuse_score>25?'warning':'success'}`} style={{width:`${ip.abuse_score}%`}}/></div>
+                                            <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{ip.abuse_score}%</span>
+                                          </div>
+                                        </td>
+                                        <td className="cell-mono">{ip.total_reports}</td>
+                                        <td><span className={`tag ${ip.is_malicious?'danger':'success'}`}>{ip.is_malicious?'Malicious':'Clean'}</span></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )
+                          }
+                        </section>
+                      </div>
+                    )}
+
+                    {/* Live Threat Feed sub-tab */}
+                    {intelTab==='feed' && <IntelFeedTab />}
+                  </>
+                )}
               </>
             )}
 

@@ -33,6 +33,7 @@ class User(Base):
     connected_accounts = relationship("ConnectedAccount",   back_populates="user", cascade="all, delete-orphan")
     password_resets    = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
     vault_files        = relationship("VaultFile",          back_populates="user", cascade="all, delete-orphan")
+    vault_audit_logs   = relationship("VaultAuditLog", foreign_keys="VaultAuditLog.user_id", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index('idx_user_email_verified', 'email', 'email_verified'),
@@ -41,20 +42,47 @@ class User(Base):
 
 
 class VaultFile(Base):
-    """DB-backed encrypted vault — persists across redeploys"""
+    """DB-backed SSCE encrypted vault — .syncveil container format"""
     __tablename__ = "vault_files"
-    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id         = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    file_name       = Column(String(500), nullable=False)
-    content_type    = Column(String(200), nullable=False, default="application/octet-stream")
-    size_bytes      = Column(BigInteger,  nullable=False, default=0)
-    sha256          = Column(String(64),  nullable=True)
-    encrypted_data  = Column(LargeBinary, nullable=False)
-    nonce           = Column(LargeBinary, nullable=False)
-    uploaded_at     = Column(DateTime, default=datetime.utcnow, nullable=False)
+    id                   = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id              = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
 
-    user = relationship("User", back_populates="vault_files")
-    __table_args__ = (Index('idx_vault_user', 'user_id', 'uploaded_at'),)
+    # Original file metadata
+    file_name            = Column(String(500),  nullable=False)
+    content_type         = Column(String(200),  nullable=False, default="application/octet-stream")
+    size_bytes           = Column(BigInteger,   nullable=False, default=0)
+    container_size       = Column(BigInteger,   nullable=True)
+
+    # Integrity
+    sha256               = Column(String(64),   nullable=True)
+    hmac                 = Column(String(64),   nullable=True)
+
+    # Crypto metadata
+    encrypted_file_key   = Column(LargeBinary,  nullable=True)
+    compression_type     = Column(String(20),   nullable=False, default="zstd")
+    encryption_version   = Column(Integer,      nullable=False, default=1)
+    storage_backend      = Column(String(50),   nullable=False, default="postgresql")
+
+    # File versioning
+    version              = Column(Integer,      nullable=False, default=1)
+
+    # Malware scan
+    malware_scan_status  = Column(String(20),   nullable=False, default="skipped")
+    malware_scan_at      = Column(DateTime,     nullable=True)
+
+    # Container blob (.syncveil binary — nonce embedded inside container)
+    encrypted_data       = Column(LargeBinary,  nullable=False)
+
+    uploaded_at          = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at           = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
+
+    user         = relationship("User",          back_populates="vault_files")
+    audit_logs   = relationship("VaultAuditLog", back_populates="vault_file", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_vault_user_uploaded", "user_id", "uploaded_at"),
+        Index("idx_vault_user_version",  "user_id", "version"),
+    )
 
 
 class PasswordResetToken(Base):
@@ -185,3 +213,29 @@ class AdminAction(Base):
 
     admin       = relationship("AdminUser", back_populates="actions")
     target_user = relationship("User", foreign_keys=[target_user_id])
+
+
+class VaultAuditLog(Base):
+    """Append-only audit trail for all vault operations."""
+    __tablename__ = "vault_audit_logs"
+
+    id           = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id      = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    file_id      = Column(UUID(as_uuid=True), ForeignKey("vault_files.id", ondelete="SET NULL"), nullable=True)
+
+    event_type   = Column(String(50),  nullable=False)
+    ip_address   = Column(String(45),  nullable=True)
+    user_agent   = Column(Text,        nullable=True)
+    detail       = Column(Text,        nullable=True)
+    success      = Column(Boolean,     nullable=False, default=True)
+
+    created_at   = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user         = relationship("User",      foreign_keys=[user_id])
+    vault_file   = relationship("VaultFile", back_populates="audit_logs")
+
+    __table_args__ = (
+        Index("idx_vault_audit_user_time", "user_id",  "created_at"),
+        Index("idx_vault_audit_file",      "file_id",  "created_at"),
+        Index("idx_vault_audit_event",     "event_type","created_at"),
+    )

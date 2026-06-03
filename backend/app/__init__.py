@@ -1,2 +1,1 @@
-"""SyncVeil backend application package."""
-
+"""SyncVeil Backend Application"""

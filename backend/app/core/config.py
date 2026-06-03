@@ -1,59 +1,205 @@
-from __future__ import annotations
+"""
+Core configuration module - Environment-based settings
 
+RULES:
+- No secrets hardcoded
+- Production must fail fast if critical config is missing
+- Development must NEVER crash due to missing external services
+"""
+
+import os
 from functools import lru_cache
-from pathlib import Path
-from typing import Literal
+from typing import List
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    """Application settings loaded from environment variables"""
 
-    env: Literal["development", "test", "production"] = Field(default="development", alias="ENV")
-    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
-    database_url: str = Field(default="sqlite:///./syncveil.db", alias="DATABASE_URL")
-    frontend_url: str = Field(default="http://localhost:5173", alias="FRONTEND_URL")
-    cors_origins: str = Field(
-        default="http://localhost:5173,http://127.0.0.1:5173",
-        alias="CORS_ORIGINS",
+    # ======================
+    # Pydantic Settings
+    # ======================
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore",
     )
-    jwt_secret: str = Field(default="dev-only-change-me", alias="JWT_SECRET")
-    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
-    access_token_expire_minutes: int = Field(default=15, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
-    refresh_token_expire_days: int = Field(default=30, alias="REFRESH_TOKEN_EXPIRE_DAYS")
-    vault_encryption_key: str = Field(default="dev-only-change-me-too", alias="VAULT_ENCRYPTION_KEY")
-    vault_storage_dir: str = Field(default="./storage/vault", alias="VAULT_STORAGE_DIR")
-    csrf_cookie_name: str = Field(default="syncveil_csrf", alias="CSRF_COOKIE_NAME")
-    refresh_cookie_name: str = Field(default="syncveil_refresh", alias="REFRESH_COOKIE_NAME")
-    email_enabled: bool = Field(default=False, alias="EMAIL_ENABLED")
-    email_verification_required: bool = Field(default=False, alias="EMAIL_VERIFICATION_REQUIRED")
-    smtp_from: str = Field(default="", alias="SMTP_FROM")
-    brevo_api_key: str = Field(default="", alias="BREVO_API_KEY")
-    log_file: str = Field(default="logs/syncveil.log", alias="LOG_FILE")
-    redis_url: str = Field(default="", alias="REDIS_URL")
-    security_events_days: int = Field(default=7, alias="SECURITY_EVENTS_DAYS")
-    rate_limit_login: str = Field(default="5/minute", alias="RATE_LIMIT_LOGIN")
-    rate_limit_signup: str = Field(default="2/minute", alias="RATE_LIMIT_SIGNUP")
-    rate_limit_otp: str = Field(default="3/minute", alias="RATE_LIMIT_OTP")
-    rate_limit_default: str = Field(default="120/minute", alias="RATE_LIMIT_DEFAULT")
-    oauth_google_client_id: str = Field(default="", alias="GOOGLE_CLIENT_ID")
-    oauth_microsoft_client_id: str = Field(default="", alias="MICROSOFT_CLIENT_ID")
-    oauth_apple_client_id: str = Field(default="", alias="APPLE_CLIENT_ID")
-    oauth_redirect_base: str = Field(default="http://localhost:5173/auth/callback", alias="OAUTH_REDIRECT_BASE")
-    tls_enforce: bool = Field(default=True, alias="TLS_ENFORCE")
+
+    # ======================
+    # Environment
+    # ======================
+    ENV: str = Field(default="development", alias="ENV")
+
+    # ======================
+    # JWT
+    # ======================
+    JWT_SECRET: str = Field(default="", alias="JWT_SECRET")
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+
+    # ======================
+    # Redis (Optional)
+    # ======================
+    REDIS_URL: str = Field(default="", alias="REDIS_URL")
+
+    # ======================
+    # Email (Brevo)
+    # ======================
+    EMAIL_ENABLED: bool = False
+    BREVO_API_KEY: str = Field(default="", alias="BREVO_API_KEY")
+    SMTP_FROM: str = Field(default="", alias="SMTP_FROM")
+    EMAIL_FROM_NAME: str = "SyncVeil"
+
+    # ======================
+    # OTP
+    # ======================
+    OTP_LENGTH: int = 6
+    OTP_EXPIRE_MINUTES: int = 5
+    OTP_MAX_ATTEMPTS: int = 3
+
+    # ======================
+    # Adaptive Security Engine
+    # ======================
+    SECURITY_CHALLENGE_THRESHOLD: int = 60
+    SECURITY_CRITICAL_THRESHOLD: int = 85
+    SECURITY_EVENTS_DAYS: int = 7
+
+    # ======================
+    # Vault Storage
+    # ======================
+    VAULT_ENCRYPTION_KEY: str = Field(default="", alias="VAULT_ENCRYPTION_KEY")
+    VAULT_STORAGE_DIR: str = Field(default="/tmp/vault_storage", alias="VAULT_STORAGE_DIR")
+
+    # ======================
+    # Email Verification
+    # ======================
+    EMAIL_VERIFICATION_REQUIRED: bool = False
+    EMAIL_VERIFICATION_EXPIRE_HOURS: int = 24
+
+    # ======================
+    # Password Hashing (Argon2)
+    # ======================
+    PASSWORD_HASH_TIME_COST: int = 2
+    PASSWORD_HASH_MEMORY_COST: int = 65536
+    PASSWORD_HASH_PARALLELISM: int = 1
+
+    # ======================
+    # Rate Limiting
+    # ======================
+    RATE_LIMIT_LOGIN: str = "5/minute"
+    RATE_LIMIT_OTP: str = "3/minute"
+    RATE_LIMIT_SIGNUP: str = "2/minute"
+
+    # ======================
+    # CORS
+    # ======================
+    CORS_ORIGINS: str = Field(default="", alias="CORS_ORIGINS")
+
+    # ======================
+    # Admin
+    # ======================
+    INITIAL_ADMIN_EMAIL: str = Field(
+        default="",
+        alias="INITIAL_ADMIN_EMAIL",
+    )
+
+    # ======================
+    # Logging
+    # ======================
+    LOG_LEVEL: str = Field(default="INFO", alias="LOG_LEVEL")
+    LOG_FILE: str = "logs/syncveil.log"
+
+    # ======================
+    # SSCE — Secure Container Engine
+    # ======================
+    VAULT_QUOTA_MB: int = Field(default=100, alias="VAULT_QUOTA_MB")
+    CLAMD_SOCKET: str   = Field(default="/var/run/clamav/clamd.ctl", alias="CLAMD_SOCKET")
+    CLAMD_HOST: str     = Field(default="", alias="CLAMD_HOST")
+    CLAMD_PORT: int     = Field(default=3310, alias="CLAMD_PORT")
+    CLAMAV_ENABLED: bool = Field(default=False, alias="CLAMAV_ENABLED")
+
+    # ======================
+    # Frontend
+    # ======================
+    FRONTEND_URL: str = Field(default="", alias="FRONTEND_URL")
+
+    # ======================
+    # Validators & Helpers
+    # ======================
+    @field_validator("ENV", mode="before")
+    @classmethod
+    def normalize_env(cls, value: str) -> str:
+        return (value or "development").strip().lower()
 
     @property
-    def cors_origins_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+    def is_production(self) -> bool:
+        return self.ENV == "production"
 
     @property
-    def storage_dir(self) -> Path:
-        return Path(self.vault_storage_dir)
+    def cors_origins_list(self) -> List[str]:
+        if self.CORS_ORIGINS == "*":
+            return ["*"]
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    # ======================
+    # Production Validation
+    # ======================
+    def validate_production_settings(self) -> None:
+        """
+        Production MUST fail fast.
+        Development MUST NOT crash.
+        """
+        if not self.is_production:
+            return
+
+        errors: list[str] = []
+
+        # Database configuration
+        database_url = os.getenv("DATABASE_URL", "").strip()
+        if not database_url:
+            errors.append("DATABASE_URL is required")
+        elif not database_url.startswith(("postgresql://", "postgres://")):
+            errors.append("DATABASE_URL must be a PostgreSQL connection string")
+
+        # Core required settings
+        if not self.JWT_SECRET:
+            errors.append("JWT_SECRET is required")
+
+        # Security checks
+        if self.JWT_SECRET and len(self.JWT_SECRET) < 32:
+            errors.append("JWT_SECRET must be at least 32 characters")
+
+        if not self.VAULT_ENCRYPTION_KEY:
+            errors.append("VAULT_ENCRYPTION_KEY is required")
+        elif len(self.VAULT_ENCRYPTION_KEY) < 32:
+            errors.append("VAULT_ENCRYPTION_KEY must be at least 32 characters")
+
+        # Frontend URL must be configured
+        if not self.FRONTEND_URL:
+            errors.append("FRONTEND_URL is required in production")
+
+        # Email only enforced if enabled
+        if self.EMAIL_ENABLED:
+            if not self.BREVO_API_KEY:
+                errors.append("BREVO_API_KEY is required when EMAIL_ENABLED=true")
+            if not self.SMTP_FROM:
+                errors.append("SMTP_FROM is required when EMAIL_ENABLED=true")
+
+        if errors:
+            raise ValueError(
+                "❌ Production configuration invalid:\n"
+                + "\n".join(f"- {e}" for e in errors)
+            )
 
 
-@lru_cache(maxsize=1)
+# ======================
+# Settings Loader
+# ======================
+@lru_cache()
 def get_settings() -> Settings:
-    return Settings()
-
+    settings = Settings()
+    settings.validate_production_settings()
+    return settings

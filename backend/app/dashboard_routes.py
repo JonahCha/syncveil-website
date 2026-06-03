@@ -1,14 +1,13 @@
 """Dashboard, Vault, Security, OAuth endpoints"""
 from __future__ import annotations
-import hashlib, io, os
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -24,11 +23,6 @@ MS_ID     = os.getenv("MICROSOFT_CLIENT_ID", "")
 MS_SE     = os.getenv("MICROSOFT_CLIENT_SECRET", "")
 FRONT_URL = os.getenv("FRONTEND_URL", "https://syncveil.software")
 
-# AES-256-GCM vault encryption
-def _vault_key() -> bytes:
-    raw = (settings.VAULT_ENCRYPTION_KEY or settings.JWT_SECRET or "dev-key").encode()
-    return hashlib.sha256(raw).digest()
-AESKEY = _vault_key()
 
 
 # ─── Auth dependency ──────────────────────────────────────────────────────────
@@ -132,46 +126,6 @@ def update_profile(payload: ProfileUpdate, auth: AuthUser = Depends(get_current_
     return {"success": True, "user": updated}
 
 
-# ─── Vault (DB-backed, encrypted) ────────────────────────────────────────────
-
-@router.post("/vault/upload")
-async def upload_file(file: UploadFile = File(...), auth: AuthUser = Depends(get_current_user)):
-    MAX_SIZE = 5 * 1024 * 1024  # 5 MB
-    content = await file.read()
-    if len(content) > MAX_SIZE:
-        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File exceeds 5 MB limit")
-
-    nonce = os.urandom(12)
-    aad   = str(auth.user.id).encode()
-    cipher = AESGCM(AESKEY)
-    encrypted = cipher.encrypt(nonce, content, aad)
-
-    sha256 = hashlib.sha256(content).hexdigest()
-    vf = VaultFile(
-        user_id      = auth.user.id,
-        file_name    = (file.filename or "file").strip()[:500],
-        content_type = file.content_type or "application/octet-stream",
-        size_bytes   = len(content),
-        sha256       = sha256,
-        encrypted_data = encrypted,
-        nonce        = nonce,
-    )
-    auth.db.add(vf); auth.db.commit(); auth.db.refresh(vf)
-    return {"file": {"id": str(vf.id), "file_name": vf.file_name, "size_bytes": vf.size_bytes, "content_type": vf.content_type, "uploaded_at": vf.uploaded_at.isoformat(), "sha256": sha256}}
-
-
-@router.get("/vault/files")
-def get_vault_files(auth: AuthUser = Depends(get_current_user)):
-    files = auth.db.query(VaultFile).filter(VaultFile.user_id == auth.user.id).order_by(desc(VaultFile.uploaded_at)).all()
-    return {"files": [{"id": str(f.id), "file_name": f.file_name, "size_bytes": f.size_bytes, "content_type": f.content_type, "uploaded_at": f.uploaded_at.isoformat(), "sha256": f.sha256} for f in files]}
-
-
-@router.delete("/vault/files/{file_id}")
-def delete_vault_file(file_id: str, auth: AuthUser = Depends(get_current_user)):
-    vf = auth.db.query(VaultFile).filter(VaultFile.id == UUID(file_id), VaultFile.user_id == auth.user.id).first()
-    if not vf: raise HTTPException(404, "File not found")
-    auth.db.delete(vf); auth.db.commit()
-    return {"success": True}
 
 
 # ─── Security ─────────────────────────────────────────────────────────────────
@@ -330,3 +284,85 @@ def public_snapshot(db: Session = Depends(get_db)):
         return {"data": {"totalUsers": users, "totalEvents": events, "status": "operational", "lastUpdated": datetime.utcnow().isoformat()}}
     except Exception:
         return {"data": {"totalUsers": 0, "totalEvents": 0, "status": "operational", "lastUpdated": datetime.utcnow().isoformat()}}
+
+
+# ─── Threat Intelligence Endpoints ───────────────────────────────────────────
+
+@router.get("/intelligence/scan")
+def intelligence_scan(auth: AuthUser = Depends(get_current_user)):
+    """Full threat intelligence scan: HIBP + LeakCheck + DNS + IP reputation."""
+    from app.core.threat_intel import run_full_scan
+    db, user = auth.db, auth.user
+
+    # Get recent login IPs (last 20 distinct)
+    recent_ips = [
+        r[0] for r in db.query(LoginLog.ip_address)
+        .filter(LoginLog.user_id == user.id)
+        .distinct().limit(20).all()
+        if r[0] and r[0] not in ("127.0.0.1", "::1", "0.0.0.0")
+    ]
+
+    return run_full_scan(user.email, recent_ips=recent_ips[:10])
+
+
+@router.get("/intelligence/breach-check")
+def breach_check(auth: AuthUser = Depends(get_current_user)):
+    """Check HIBP + LeakCheck for the authenticated user's email."""
+    from app.core.threat_intel import check_email_breaches, check_leakcheck
+    user = auth.user
+    hibp = check_email_breaches(user.email)
+    lc   = check_leakcheck(user.email)
+    return {
+        "email": user.email,
+        "hibp": hibp,
+        "leakcheck": lc,
+        "total_breaches": (hibp.get("count") or 0) + (lc.get("count") or 0),
+        "status": "breached" if ((hibp.get("count") or 0) + (lc.get("count") or 0)) > 0 else "clean",
+    }
+
+
+@router.get("/intelligence/dns")
+def dns_check(auth: AuthUser = Depends(get_current_user)):
+    """Check SPF, DKIM, DMARC for the user's email domain."""
+    from app.core.threat_intel import check_dns_records
+    email  = auth.user.email
+    domain = email.split("@")[-1] if "@" in email else ""
+    if not domain:
+        raise HTTPException(400, "Could not extract domain from email")
+    return check_dns_records(domain)
+
+
+@router.get("/intelligence/ip-reputation")
+def ip_reputation(auth: AuthUser = Depends(get_current_user)):
+    """Check AbuseIPDB reputation for recent login IPs."""
+    from app.core.threat_intel import check_multiple_ips
+    db, user = auth.db, auth.user
+    ips = [
+        r[0] for r in db.query(LoginLog.ip_address)
+        .filter(LoginLog.user_id == user.id, LoginLog.success.is_(True))
+        .order_by(desc(LoginLog.timestamp)).limit(20).all()
+        if r[0] and r[0] not in ("127.0.0.1", "::1", "0.0.0.0")
+    ]
+    results = check_multiple_ips(list(dict.fromkeys(ips))[:10])
+    return {
+        "checked": len(results),
+        "malicious": sum(1 for r in results if r.get("is_malicious")),
+        "results": results,
+    }
+
+
+@router.get("/intelligence/threat-feed")
+def threat_feed(limit: int = Query(default=20, le=100), auth: AuthUser = Depends(get_current_user)):
+    """URLhaus live malware URL feed — free, no key required."""
+    from app.core.threat_intel import get_threat_feed
+    return get_threat_feed(limit=limit)
+
+
+@router.get("/intelligence/password-check")
+def password_check(password: str = Query(..., min_length=1), auth: AuthUser = Depends(get_current_user)):
+    """
+    Check password against HIBP k-anonymity endpoint.
+    The actual password is NEVER sent to any server — only first 5 chars of SHA-1 hash.
+    """
+    from app.core.threat_intel import check_password_pwned
+    return check_password_pwned(password)

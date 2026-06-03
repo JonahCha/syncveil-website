@@ -41,4 +41,4 @@ echo ""
 echo "Press Ctrl+C to stop the server"
 echo "─────────────────────────────────────────"
 
-exec python main.py
+exec python -m uvicorn app.main:app --reload --host 0.0.0.0 --port $PORT

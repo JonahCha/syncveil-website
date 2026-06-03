@@ -152,8 +152,38 @@ export const dashboardAPI = {
   updateProfile:       (p) => req('PATCH','/api/profile', p),
   disconnectAccount:   (provider) => req('DELETE', `/api/connected-accounts/${provider}`),
   deleteVaultFile:     (id) => req('DELETE', `/api/vault/files/${id}`),
+  getVaultStorageStats:() => req('GET',  '/api/vault/storage/stats'),
+  checkFileIntegrity:  (id) => req('GET',  `/api/vault/files/${id}/integrity`),
+
+  downloadVaultFile: async (id, filename) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) throw new APIError(401, 'Not authenticated');
+    const res = await fetch(`${API_BASE_URL}/api/vault/files/${id}/download`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new APIError(res.status, getMsg(d, 'Download failed'), d);
+    }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename || 'download';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    return { success: true };
+  },
   getGoogleOAuthUrl:   () => req('GET',  '/api/auth/google'),
   getMicrosoftOAuthUrl:() => req('GET',  '/api/auth/microsoft'),
+
+
+  // ── Threat Intelligence ──
+  getThreatScan:       () => req('GET',  '/api/intelligence/scan'),
+  getBreachCheck:      () => req('GET',  '/api/intelligence/breach-check'),
+  getDnsCheck:         () => req('GET',  '/api/intelligence/dns'),
+  getIpReputation:     () => req('GET',  '/api/intelligence/ip-reputation'),
+  getThreatFeed:       (limit=20) => req('GET', `/api/intelligence/threat-feed?limit=${limit}`),
+  checkPassword:       (pw) => req('GET', `/api/intelligence/password-check?password=${encodeURIComponent(pw)}`),
 
   uploadFile: async (file, onProgress) => {
     const token = localStorage.getItem('access_token');
