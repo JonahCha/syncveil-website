@@ -231,7 +231,12 @@ async def upload_file(
     filename     = (file.filename or "file").strip()[:500]
     content_type = file.content_type or "application/octet-stream"
     try:
-        container, meta = build_container(content, filename=filename, content_type=content_type)
+        container, meta = build_container(
+            content,
+            filename=filename,
+            content_type=content_type,
+            user_id=str(auth.user.id),
+        )
     except Exception as exc:
         _audit(auth.db, user_id=auth.user.id, event_type="upload",
                detail=f"Container build failed: {exc}", success=False)
@@ -271,6 +276,7 @@ async def upload_file(
         encrypted_file_key  = enc_key,
         compression_type    = meta.compression,
         encryption_version  = meta.ssce_version,
+        key_version         = meta.key_version,
         storage_backend     = "postgresql",
         version             = 1,
         malware_scan_status = scan_status,

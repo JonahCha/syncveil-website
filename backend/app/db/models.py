@@ -62,6 +62,7 @@ class VaultFile(Base):
     encrypted_file_key   = Column(LargeBinary,  nullable=True)
     compression_type     = Column(String(20),   nullable=False, default="zstd")
     encryption_version   = Column(Integer,      nullable=False, default=1)
+    key_version          = Column(Integer,      nullable=False, default=1)  # tracks VAULT_ENCRYPTION_KEY rotation
     storage_backend      = Column(String(50),   nullable=False, default="postgresql")
 
     # File versioning

@@ -1,7 +1,7 @@
 """Local encrypted vault storage for uploaded user files."""
 from __future__ import annotations
 
-import hashlib
+import hashlib  # still used for sha256 content digest
 import json
 import os
 from datetime import datetime
@@ -10,6 +10,8 @@ from typing import Any
 from uuid import uuid4
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.hashes import SHA256
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from app.core.config import get_settings
 
@@ -18,8 +20,19 @@ settings = get_settings()
 
 
 def _derive_key() -> bytes:
-    raw = (settings.VAULT_ENCRYPTION_KEY or settings.JWT_SECRET or "syncveil-dev-key").encode("utf-8")
-    return hashlib.sha256(raw).digest()
+    """Derive vault key via HKDF-SHA256.
+
+    This is the legacy file-storage path (filesystem-backed vault).
+    Uses the same IKM as ssce.py but a distinct salt/info so the derived
+    key is domain-separated from the SSCE root key.
+    """
+    ikm = (settings.VAULT_ENCRYPTION_KEY or settings.JWT_SECRET or "syncveil-dev-key").encode("utf-8")
+    return HKDF(
+        algorithm=SHA256(),
+        length=32,
+        salt=b"vault-fs-v1",
+        info=b"syncveil-vault-fs-key",
+    ).derive(ikm)
 
 
 AES_KEY = _derive_key()

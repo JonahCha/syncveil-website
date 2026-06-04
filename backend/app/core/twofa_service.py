@@ -1,6 +1,7 @@
 """Two-Factor Authentication service layer."""
 from __future__ import annotations
 import json
+import os
 from datetime import datetime
 from typing import Optional
 
@@ -15,7 +16,47 @@ from app.core.totp import (
     verify_recovery_code,
     verify_totp,
 )
+from app.core.ssce import derive_user_key
 from app.db.models import TwoFactorConfig, TwoFactorRecoveryCode, User
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+
+# ─── TOTP secret encryption ──────────────────────────────────────────────────
+# TOTP secrets are encrypted at rest using a key derived from the user's
+# scoped key (from ssce.derive_user_key).  A separate HKDF context is used
+# to keep the TOTP key distinct from the vault file-wrapping key.
+# Format stored in DB:  hex(nonce_12) + ":" + hex(aesgcm_ciphertext)
+
+def _totp_cipher_key(user_id: str) -> bytes:
+    """Derive a 32-byte AES key for TOTP secret encryption for this user."""
+    from cryptography.hazmat.primitives.hashes import SHA256
+    from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+    user_key = derive_user_key(str(user_id))
+    return HKDF(
+        algorithm=SHA256(),
+        length=32,
+        salt=b"totp-secret-v1",
+        info=f"syncveil-totp:{user_id}".encode(),
+    ).derive(user_key)
+
+
+def _encrypt_totp_secret(user_id: str, secret: str) -> str:
+    """Encrypt a plaintext TOTP secret; return storable string."""
+    key    = _totp_cipher_key(str(user_id))
+    nonce  = os.urandom(12)
+    ct     = AESGCM(key).encrypt(nonce, secret.encode("utf-8"), None)
+    return nonce.hex() + ":" + ct.hex()
+
+
+def _decrypt_totp_secret(user_id: str, stored: str) -> str:
+    """Decrypt a stored TOTP secret string; return plaintext."""
+    if ":" not in stored:
+        # Legacy plaintext — return as-is during migration window.
+        return stored
+    nonce_hex, ct_hex = stored.split(":", 1)
+    key  = _totp_cipher_key(str(user_id))
+    pt   = AESGCM(key).decrypt(bytes.fromhex(nonce_hex), bytes.fromhex(ct_hex), None)
+    return pt.decode("utf-8")
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -46,7 +87,7 @@ def begin_totp_setup(db: Session, user: User) -> dict:
         cfg = TwoFactorConfig(user_id=user.id)
         db.add(cfg)
 
-    cfg.totp_secret_pending = secret
+    cfg.totp_secret_pending = _encrypt_totp_secret(user.id, secret)
     cfg.totp_pending_at     = datetime.utcnow()
     db.commit()
 
@@ -69,11 +110,12 @@ def confirm_totp_setup(db: Session, user: User, code: str) -> dict:
     if not cfg.totp_secret_pending:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="No pending 2FA setup — call /2fa/setup first")
 
-    if not verify_totp(cfg.totp_secret_pending, code):
+    pending_plain = _decrypt_totp_secret(user.id, cfg.totp_secret_pending)
+    if not verify_totp(pending_plain, code):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Invalid code — check your authenticator app time sync")
 
-    # Activate
-    cfg.totp_secret  = cfg.totp_secret_pending
+    # Activate — keep the already-encrypted pending value as the active secret
+    cfg.totp_secret         = cfg.totp_secret_pending
     cfg.totp_secret_pending = None
     cfg.totp_pending_at     = None
     cfg.enabled      = True
@@ -105,7 +147,8 @@ def disable_totp(db: Session, user: User, code: str) -> dict:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="2FA is not enabled")
 
     # Accept TOTP code or recovery code
-    ok = verify_totp(cfg.totp_secret, code)
+    active_plain = _decrypt_totp_secret(user.id, cfg.totp_secret)
+    ok = verify_totp(active_plain, code)
     if not ok:
         ok = _try_recovery_code(db, user, code)
 
@@ -148,7 +191,8 @@ def regenerate_recovery_codes(db: Session, user: User, code: str) -> dict:
     if not cfg or not cfg.enabled:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="2FA is not enabled")
 
-    if not verify_totp(cfg.totp_secret, code):
+    active_plain = _decrypt_totp_secret(user.id, cfg.totp_secret)
+    if not verify_totp(active_plain, code):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Invalid TOTP code")
 
     db.query(TwoFactorRecoveryCode).filter(
@@ -174,7 +218,7 @@ def verify_2fa_for_login(db: Session, user: User, code: str) -> bool:
     if not cfg or not cfg.enabled:
         return True  # 2FA not enrolled — pass through
 
-    if verify_totp(cfg.totp_secret, code):
+    if verify_totp(_decrypt_totp_secret(user.id, cfg.totp_secret), code):
         return True
 
     return _try_recovery_code(db, user, code)
