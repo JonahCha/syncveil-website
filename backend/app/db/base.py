@@ -1,22 +1,17 @@
-"""SQLAlchemy Base and model registrations."""
-from app.core.database import Base
+"""SQLAlchemy Base and all models"""
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+
+# Import all models so Alembic can detect them
 from app.db.models import (
-    AIFileAnalysis,
-    AdminAction,
-    AdminUser,
-    ConnectedAccount,
+    User,
+    Session,
+    OTPAttempt,
     EmailVerification,
     LoginLog,
-    OTPAttempt,
-    PasswordResetToken,
-    PrivacyScan,
-    SecurityScore,
-    Session,
-    TwoFactorConfig,
-    TwoFactorRecoveryCode,
-    User,
-    VaultAuditLog,
-    VaultFile,
+    AdminUser,
+    AdminAction,
 )
 
 __all__ = [
@@ -26,15 +21,6 @@ __all__ = [
     "OTPAttempt",
     "EmailVerification",
     "LoginLog",
-    "ConnectedAccount",
-    "PasswordResetToken",
-    "VaultFile",
-    "VaultAuditLog",
-    "TwoFactorConfig",
-    "TwoFactorRecoveryCode",
     "AdminUser",
     "AdminAction",
-    "AIFileAnalysis",
-    "PrivacyScan",
-    "SecurityScore",
 ]
