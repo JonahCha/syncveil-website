@@ -41,4 +41,9 @@ echo ""
 echo "Press Ctrl+C to stop the server"
 echo "─────────────────────────────────────────"
 
+echo "🔄 Running database migrations..."
+alembic upgrade head
+echo "✓ Migrations complete"
+echo ""
+
 exec python -m uvicorn app.main:app --reload --host 0.0.0.0 --port $PORT
