@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
@@ -10,23 +9,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.auth.routes import router as auth_router
 from app.core.config import get_settings
 from app.core.database import init_db
-from app.core.security import ensure_https
-from app.routes.auth import router as auth_router
-from app.routes.dashboard import router as dashboard_router
-from app.routes.devices import router as devices_router
-from app.routes.files import router as vault_router
-from app.routes.public import router as public_router
-from app.routes.security import router as security_router
+from app.dashboard_routes import router as dashboard_router
+from app.twofa_routes import router as twofa_router
+from app.vault_routes import router as vault_router
 
 settings = get_settings()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if settings.tls_enforce and settings.env == "production" and not ensure_https(request.scope):
-            return JSONResponse({"detail": "HTTPS required"}, status_code=403)
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -41,7 +35,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "connect-src 'self' https:; "
             "frame-ancestors 'none'"
         )
-        if settings.env == "production":
+        if settings.is_production:
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         return response
 
@@ -112,12 +106,10 @@ app.add_middleware(
     max_age=600,
 )
 
-app.include_router(public_router)
 app.include_router(auth_router)
-app.include_router(vault_router)
-app.include_router(security_router)
 app.include_router(dashboard_router)
-app.include_router(devices_router)
+app.include_router(vault_router)
+app.include_router(twofa_router)
 
 
 @app.exception_handler(Exception)
