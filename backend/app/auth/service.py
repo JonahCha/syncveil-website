@@ -81,12 +81,15 @@ def _verify_otp(db: Session, user: User, purpose: str, code: str) -> None:
 
 def _issue_tokens(db: Session, user: User, *, ip: str, ua: str, existing=None) -> dict:
     now = datetime.utcnow()
+    from app.core.device_parser import parse_device
+    parsed = parse_device(ua)
     if existing is None:
         session = RefreshToken(
             user_id=user.id,
             refresh_token_hash=f"pending-{uuid4().hex}",
             expires_at=now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
             last_used_at=now, ip_address=ip, device_info=ua,
+            device_name=parsed["name"],
         )
         db.add(session); db.flush()
     else:
@@ -277,19 +280,80 @@ def verify_login_challenge(db: Session, email: str, code: str, *, ip: str, ua: s
 
     _verify_otp(db, user, OTP_LOGIN, code.strip())
 
+    # ── Check if 2FA is enrolled ──
+    from app.core.twofa_service import is_2fa_enabled
+    if is_2fa_enabled(db, user):
+        # Signal to frontend: TOTP step required before tokens are issued
+        _log(db, email=norm, ip=ip, ua=ua, success=False, user=user, reason="2fa_required")
+        db.commit()
+        return {
+            "totp_required": True,
+            "email": user.email,
+            "message": "Enter your authenticator code or a recovery code.",
+        }
+
     now = datetime.utcnow()
     user.last_login_at = now
     tokens = _issue_tokens(db, user, ip=ip, ua=ua)
 
-    # Get location for log + notification
     from app.core.email import _get_location
     location = _get_location(ip)
+    # Backfill location on the newly-created session
+    try:
+        from app.auth.models import RefreshToken as RT
+        from app.core.jwt import decode_refresh_token as _drt
+        _pl = _drt(tokens["refresh_token"])
+        if _pl:
+            from uuid import UUID as _UUID
+            _sess = db.query(RT).filter(RT.id == _UUID(str(_pl.get("session_id")))).first()
+            if _sess:
+                _sess.location = location
+    except Exception:
+        pass
     _log(db, email=norm, ip=ip, ua=ua, success=True, user=user, reason="otp_verified", location=location)
     db.commit()
 
-    # Fire login notification email in background (non-blocking)
     _send_login_notification_bg(user.email, ip, ua, now.strftime("%Y-%m-%d %H:%M:%S"))
 
+    return {"user": _serialize(user), **tokens}
+
+
+# ─── TOTP Login Challenge ─────────────────────────────────────────────────────
+
+def verify_totp_login_challenge(db: Session, email: str, code: str, *, ip: str, ua: str) -> dict:
+    """Final login step when user has 2FA enabled — verify TOTP or recovery code."""
+    norm = email.lower().strip()
+    user = db.query(User).filter(User.email == norm).first()
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    from app.core.twofa_service import verify_2fa_for_login
+    if not verify_2fa_for_login(db, user, code.strip()):
+        _log(db, email=norm, ip=ip, ua=ua, success=False, user=user, reason="2fa_invalid")
+        db.commit()
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Invalid authenticator code or recovery code")
+
+    now = datetime.utcnow()
+    user.last_login_at = now
+    tokens = _issue_tokens(db, user, ip=ip, ua=ua)
+
+    from app.core.email import _get_location
+    location = _get_location(ip)
+    try:
+        from app.auth.models import RefreshToken as RT
+        from app.core.jwt import decode_refresh_token as _drt
+        _pl = _drt(tokens["refresh_token"])
+        if _pl:
+            from uuid import UUID as _UUID
+            _sess = db.query(RT).filter(RT.id == _UUID(str(_pl.get("session_id")))).first()
+            if _sess:
+                _sess.location = location
+    except Exception:
+        pass
+    _log(db, email=norm, ip=ip, ua=ua, success=True, user=user, reason="2fa_verified", location=location)
+    db.commit()
+
+    _send_login_notification_bg(user.email, ip, ua, now.strftime("%Y-%m-%d %H:%M:%S"))
     return {"user": _serialize(user), **tokens}
 
 

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.auth.service import (
     forgot_password, login_user, logout_user, refresh_access_token,
     register_user, resend_verification_code, reset_password,
-    verify_email, verify_login_challenge, update_user_profile,
+    verify_email, verify_login_challenge, verify_totp_login_challenge, update_user_profile,
 )
 from app.core.request_context import get_request_context
 from app.db.session import get_db
@@ -67,6 +67,11 @@ def login(p: LoginRequest, request: Request, db: Session = Depends(get_db)):
 def challenge(p: ChallengeRequest, request: Request, db: Session = Depends(get_db)):
     ctx = get_request_context(request)
     return verify_login_challenge(db, p.email, p.code, ip=ctx.ip_address, ua=ctx.user_agent)
+
+@router.post("/login/totp")
+def totp_challenge(p: ChallengeRequest, request: Request, db: Session = Depends(get_db)):
+    ctx = get_request_context(request)
+    return verify_totp_login_challenge(db, p.email, p.code, ip=ctx.ip_address, ua=ctx.user_agent)
 
 @router.post("/forgot-password")
 def forgot(p: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):

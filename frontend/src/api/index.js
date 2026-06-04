@@ -98,6 +98,21 @@ export const authAPI = {
     });
     const data = await res.json();
     if (!res.ok) throw new APIError(res.status, getMsg(data,'Invalid code'), data);
+    // If 2FA enrolled, backend returns totp_required:true instead of tokens
+    if (data.totp_required) {
+      return { success: false, totpRequired: true, email: data.email, message: data.message };
+    }
+    storeAuth(data);
+    return { success:true, user: data.user };
+  },
+
+  verifyTotpChallenge: async (email, code) => {
+    const res = await fetch(`${API_BASE_URL}/auth/login/totp`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email: email.toLowerCase().trim(), code: code.trim() }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new APIError(res.status, getMsg(data,'Invalid authenticator code'), data);
     storeAuth(data);
     return { success:true, user: data.user };
   },
@@ -175,6 +190,20 @@ export const dashboardAPI = {
   },
   getGoogleOAuthUrl:   () => req('GET',  '/api/auth/google'),
   getMicrosoftOAuthUrl:() => req('GET',  '/api/auth/microsoft'),
+
+  // ── 2FA ──
+  get2FAStatus:             () => req('GET',   '/api/2fa/status'),
+  begin2FASetup:            () => req('POST',  '/api/2fa/setup'),
+  confirm2FASetup:          (code) => req('POST', '/api/2fa/confirm', { code }),
+  disable2FA:               (code) => req('POST', '/api/2fa/disable', { code }),
+  regenerateRecoveryCodes:  (code) => req('POST', '/api/2fa/recovery-codes/regenerate', { code }),
+
+  // ── Sessions ──
+  getSessions:        () => req('GET',    '/api/sessions'),
+  revokeSession:      (id) => req('DELETE', `/api/sessions/${id}`),
+  revokeAllSessions:  () => req('DELETE', '/api/sessions'),
+  trustDevice:        (session_id, trusted=true) => req('PATCH', '/api/sessions/trust', { session_id, trusted }),
+  renameDevice:       (session_id, name) => req('PATCH', '/api/sessions/rename', { session_id, name }),
 
 
   // ── Threat Intelligence ──

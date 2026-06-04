@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.auth.routes import router as auth_router
 from app.dashboard_routes import router as dashboard_router
 from app.vault_routes import router as vault_router
+from app.twofa_routes import router as twofa_router
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -68,6 +69,33 @@ def _apply_schema(engine):
         "CREATE INDEX IF NOT EXISTS idx_vault_audit_user_time ON vault_audit_logs(user_id, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_vault_audit_file ON vault_audit_logs(file_id, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_vault_audit_event ON vault_audit_logs(event_type, created_at)",
+        # ── 2FA ──
+        """CREATE TABLE IF NOT EXISTS two_factor_configs (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+            enabled BOOLEAN NOT NULL DEFAULT FALSE,
+            totp_secret VARCHAR(64),
+            totp_secret_pending VARCHAR(64),
+            totp_pending_at TIMESTAMP,
+            enabled_at TIMESTAMP,
+            disabled_at TIMESTAMP,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW())""",
+        "CREATE INDEX IF NOT EXISTS idx_2fa_config_user ON two_factor_configs(user_id)",
+        """CREATE TABLE IF NOT EXISTS two_factor_recovery_codes (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            config_id UUID REFERENCES two_factor_configs(id) ON DELETE CASCADE,
+            code_hash VARCHAR(64) NOT NULL,
+            used BOOLEAN NOT NULL DEFAULT FALSE,
+            used_at TIMESTAMP,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW())""",
+        "CREATE INDEX IF NOT EXISTS idx_2fa_recovery_user_used ON two_factor_recovery_codes(user_id, used)",
+        # ── Session enhancements ──
+        "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_name VARCHAR(200)",
+        "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS location VARCHAR(255)",
+        "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS trusted BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS trusted_at TIMESTAMP",
     ]
     with engine.begin() as conn:
         for s in stmts:
@@ -102,3 +130,4 @@ def health(): return {"status": "ok"}
 app.include_router(auth_router, prefix="/auth")
 app.include_router(dashboard_router)
 app.include_router(vault_router)
+app.include_router(twofa_router)

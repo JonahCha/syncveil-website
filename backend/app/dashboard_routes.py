@@ -70,9 +70,10 @@ def get_dashboard(auth: AuthUser = Depends(get_current_user)):
     vault_size  = db.query(VaultFile).filter(VaultFile.user_id == user.id).with_entities(VaultFile.size_bytes).all()
     total_size  = sum(r.size_bytes or 0 for r in vault_size)
 
-    active_sessions = db.query(UserSession).filter(
+    active_sessions_q = db.query(UserSession).filter(
         UserSession.user_id == user.id, UserSession.revoked.is_(False), UserSession.expires_at > now,
-    ).count()
+    ).order_by(desc(UserSession.last_used_at)).all()
+    active_sessions = len(active_sessions_q)
 
     threats_7d = db.query(LoginLog).filter(
         LoginLog.user_id == user.id, LoginLog.success.is_(False), LoginLog.timestamp >= seven_ago,
@@ -81,6 +82,24 @@ def get_dashboard(auth: AuthUser = Depends(get_current_user)):
     recent = db.query(LoginLog).filter(LoginLog.user_id == user.id).order_by(desc(LoginLog.timestamp)).limit(10).all()
 
     connected = db.query(ConnectedAccount).filter(ConnectedAccount.user_id == user.id).all()
+
+    from app.core.device_parser import parse_device
+    def _ser_session(s: UserSession, current_sid) -> dict:
+        parsed = parse_device(s.device_info)
+        is_current = str(s.id) == str(current_sid)
+        return {
+            "id":           str(s.id),
+            "device_name":  s.device_name or parsed["name"],
+            "os":           parsed["os"],
+            "browser":      parsed["browser"],
+            "icon":         parsed["icon"],
+            "ip_address":   s.ip_address or "—",
+            "location":     s.location or "Unknown location",
+            "created_at":   s.created_at.isoformat() if s.created_at else None,
+            "last_used_at": s.last_used_at.isoformat() if s.last_used_at else None,
+            "trusted":      bool(s.trusted),
+            "is_current":   is_current,
+        }
 
     return {"data": {
         "protectedRecords": vault_count + active_sessions,
@@ -93,6 +112,7 @@ def get_dashboard(auth: AuthUser = Depends(get_current_user)):
         "emailVerified":    user.email_verified,
         "connectedAccounts": [{"provider": c.provider, "email": c.email, "displayName": c.display_name, "connectedAt": c.connected_at.isoformat()} for c in connected],
         "recentActivity":    [{"id": str(l.id), "success": l.success, "reason": l.failure_reason, "ip": l.ip_address, "location": getattr(l, "location", None), "device": l.device_info, "timestamp": l.timestamp.isoformat()} for l in recent],
+        "sessions":          [_ser_session(s, auth.session.id) for s in active_sessions_q],
     }}
 
 
@@ -366,3 +386,118 @@ def password_check(password: str = Query(..., min_length=1), auth: AuthUser = De
     """
     from app.core.threat_intel import check_password_pwned
     return check_password_pwned(password)
+
+
+# ─── Session Management ───────────────────────────────────────────────────────
+
+class TrustDeviceRequest(BaseModel):
+    session_id: str
+    trusted: bool = True
+
+class RenameDeviceRequest(BaseModel):
+    session_id: str
+    name: str
+
+
+@router.get("/sessions")
+def list_sessions(auth: AuthUser = Depends(get_current_user)):
+    """List all active sessions for the authenticated user."""
+    db, user, now = auth.db, auth.user, datetime.utcnow()
+    from app.core.device_parser import parse_device
+    sessions = (
+        db.query(UserSession)
+        .filter(UserSession.user_id == user.id, UserSession.revoked.is_(False), UserSession.expires_at > now)
+        .order_by(desc(UserSession.last_used_at))
+        .all()
+    )
+    def _ser(s: UserSession) -> dict:
+        parsed = parse_device(s.device_info)
+        return {
+            "id":           str(s.id),
+            "device_name":  s.device_name or parsed["name"],
+            "os":           parsed["os"],
+            "browser":      parsed["browser"],
+            "icon":         parsed["icon"],
+            "ip_address":   s.ip_address or "—",
+            "location":     s.location or "Unknown location",
+            "created_at":   s.created_at.isoformat() if s.created_at else None,
+            "last_used_at": s.last_used_at.isoformat() if s.last_used_at else None,
+            "trusted":      bool(s.trusted),
+            "is_current":   str(s.id) == str(auth.session.id),
+        }
+    return {"sessions": [_ser(s) for s in sessions]}
+
+
+@router.delete("/sessions/{session_id}")
+def revoke_session(session_id: str, auth: AuthUser = Depends(get_current_user)):
+    """Revoke a specific session by ID."""
+    db, user, now = auth.db, auth.user, datetime.utcnow()
+    try:
+        sid = UUID(session_id)
+    except Exception:
+        raise HTTPException(400, "Invalid session ID")
+    sess = db.query(UserSession).filter(
+        UserSession.id == sid, UserSession.user_id == user.id, UserSession.revoked.is_(False),
+    ).first()
+    if not sess:
+        raise HTTPException(404, "Session not found or already revoked")
+    sess.revoked = True
+    sess.revoked_at = now
+    sess.revoked_reason = "user_revoked"
+    db.commit()
+    return {"success": True, "revoked_id": session_id}
+
+
+@router.delete("/sessions")
+def revoke_all_sessions(auth: AuthUser = Depends(get_current_user)):
+    """Revoke ALL sessions for the user (logout everywhere)."""
+    db, user, now = auth.db, auth.user, datetime.utcnow()
+    sessions = db.query(UserSession).filter(
+        UserSession.user_id == user.id, UserSession.revoked.is_(False),
+    ).all()
+    for s in sessions:
+        s.revoked = True
+        s.revoked_at = now
+        s.revoked_reason = "logout_all"
+    db.commit()
+    return {"success": True, "revoked": len(sessions)}
+
+
+@router.patch("/sessions/trust")
+def trust_device(p: TrustDeviceRequest, auth: AuthUser = Depends(get_current_user)):
+    """Mark (or unmark) a session as a trusted device."""
+    db, user, now = auth.db, auth.user, datetime.utcnow()
+    try:
+        sid = UUID(p.session_id)
+    except Exception:
+        raise HTTPException(400, "Invalid session ID")
+    sess = db.query(UserSession).filter(
+        UserSession.id == sid, UserSession.user_id == user.id, UserSession.revoked.is_(False),
+    ).first()
+    if not sess:
+        raise HTTPException(404, "Session not found")
+    sess.trusted = p.trusted
+    sess.trusted_at = now if p.trusted else None
+    db.commit()
+    return {"success": True, "session_id": p.session_id, "trusted": p.trusted}
+
+
+@router.patch("/sessions/rename")
+def rename_device(p: RenameDeviceRequest, auth: AuthUser = Depends(get_current_user)):
+    """Set a custom friendly name for a session/device."""
+    db, user = auth.db, auth.user
+    try:
+        sid = UUID(p.session_id)
+    except Exception:
+        raise HTTPException(400, "Invalid session ID")
+    sess = db.query(UserSession).filter(
+        UserSession.id == sid, UserSession.user_id == user.id, UserSession.revoked.is_(False),
+    ).first()
+    if not sess:
+        raise HTTPException(404, "Session not found")
+    name = (p.name or "").strip()[:100]
+    if not name:
+        raise HTTPException(400, "Name cannot be empty")
+    sess.device_name = name
+    db.commit()
+    return {"success": True, "session_id": p.session_id, "device_name": name}

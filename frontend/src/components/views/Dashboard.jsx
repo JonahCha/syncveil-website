@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Activity, AlertTriangle, CheckCircle, Clock, Eye, Globe, Link, Lock, LogOut, Mail, Moon, RefreshCw, Settings, Shield, Smartphone, Sun, Trash2, Upload, User, Wifi, X } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, Clock, Download, Eye, Globe, Link, Lock, LogOut, Mail, Moon, RefreshCw, Settings, Shield, Smartphone, Sun, Trash2, Upload, User, Wifi, X } from 'lucide-react';
 import { dashboardAPI } from '../../api';
 import '../../adminator.css';
 
@@ -57,12 +57,15 @@ const ProviderLogo = ({ p }) => {
 };
 
 const TABS = [
-  { id:'overview', label:'Overview', svg: <path d="M12 20V10M18 20V4M6 20v-4"/> },
+  { id:'overview', label:'Overview',        svg: <path d="M12 20V10M18 20V4M6 20v-4"/> },
+  { id:'score',    label:'Security Score',  svg: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></> },
   { id:'email',    label:'Email Security', svg: <><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></> },
   { id:'vault',    label:'Encrypted Vault', svg: <><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></> },
   { id:'monitor',  label:'Security Monitor', svg: <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/> },
   { id:'intel',    label:'Intelligence', svg: <><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></> },
   { id:'settings', label:'Settings', svg: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></> },
+  { id:'alerts',   label:'Alert Engine',  svg: <><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></> },
+  { id:'activity', label:'Activity Log',  svg: <><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></> },
 ];
 
 const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Brazil','Canada','Chile','China','Colombia','Croatia','Czech Republic','Denmark','Egypt','Ethiopia','Finland','France','Germany','Ghana','Greece','Hungary','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kenya','Malaysia','Mexico','Morocco','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Peru','Philippines','Poland','Portugal','Romania','Russia','Saudi Arabia','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Taiwan','Thailand','Turkey','Ukraine','United Arab Emirates','United Kingdom','United States','Vietnam','Other'];
@@ -195,6 +198,488 @@ function IntelFeedTab() {
   );
 }
 
+// ── Security Alert Engine ─────────────────────────────────────────────────────
+const ALERT_RULES = [
+  { id:'new_device',    icon:<Smartphone size={16}/>, color:'primary', severity:'high',     label:'New device login',             desc:'Sign-in from an unrecognised device or browser.' },
+  { id:'password_change',icon:<Lock size={16}/>,      color:'warning', severity:'critical', label:'Password change',              desc:'Account password was updated.' },
+  { id:'email_change',  icon:<Mail size={16}/>,       color:'warning', severity:'critical', label:'Email address change',         desc:'Primary email was modified on your account.' },
+  { id:'breach',        icon:<AlertTriangle size={16}/>,color:'danger', severity:'critical', label:'Breach detected',             desc:'Your credentials appeared in a known data breach.' },
+  { id:'new_location',  icon:<Globe size={16}/>,      color:'purple',  severity:'high',     label:'Vault access · new location', desc:'Encrypted vault opened from an unrecognised location.' },
+  { id:'failed_logins', icon:<Wifi size={16}/>,       color:'danger',  severity:'medium',   label:'Multiple failed logins',       desc:'5+ consecutive failed authentication attempts.' },
+];
+
+const ALERT_CHANNELS = [
+  { id:'email',   label:'Email',             icon:<Mail size={14}/> },
+  { id:'push',    label:'Push notification', icon:<Smartphone size={14}/> },
+  { id:'sms',     label:'SMS',               icon:<Activity size={14}/> },
+  { id:'webhook', label:'Webhook',           icon:<Link size={14}/> },
+  { id:'slack',   label:'Slack',             icon:<Settings size={14}/> },
+];
+
+const ALERT_SIMULATIONS = [
+  { ruleId:'new_device',     dot:'primary', sub:'Chrome 125 · Windows 11 · Mumbai, IN' },
+  { ruleId:'password_change',dot:'warning', sub:'Changed via account settings' },
+  { ruleId:'email_change',   dot:'warning', sub:'New email address confirmed' },
+  { ruleId:'breach',         dot:'danger',  sub:'LinkedIn · 2024 · 533M records exposed' },
+  { ruleId:'new_location',   dot:'purple',  sub:'Vault opened remotely · Frankfurt, DE' },
+  { ruleId:'failed_logins',  dot:'danger',  sub:'7 attempts in 2 min · 192.168.1.55' },
+];
+
+function AlertEngine({ showToast, logEvent }) {
+  const [enabled,   setEnabled]   = useState(() => new Set(ALERT_RULES.map(r => r.id)));
+  const [channels,  setChannels]  = useState(() => new Set(['email','push']));
+  const [feedItems, setFeedItems] = useState([]);
+  const [simIdx,    setSimIdx]    = useState(0);
+  const [triggered, setTriggered] = useState(0);
+
+  const toggleRule = (id, on) =>
+    setEnabled(prev => { const s = new Set(prev); on ? s.add(id) : s.delete(id); return s; });
+
+  const toggleChannel = id =>
+    setChannels(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const simulate = () => {
+    const sim  = ALERT_SIMULATIONS[simIdx % ALERT_SIMULATIONS.length];
+    const rule = ALERT_RULES.find(r => r.id === sim.ruleId);
+    setSimIdx(i => i + 1);
+    if (!enabled.has(sim.ruleId)) { showToast(`Alert "${rule?.label}" is disabled — enable it first.`, 'error'); return; }
+    if (channels.size === 0)      { showToast('No channels active — enable at least one channel.', 'error'); return; }
+    const chs = [...channels].join(', ');
+    const now = new Date().toTimeString().slice(0,8);
+    setFeedItems(prev => [{ id: Date.now(), title: rule.label, sub: `${sim.sub} · via ${chs}`, dot: sim.dot, time: now }, ...prev].slice(0, 12));
+    setTriggered(t => t + 1);
+    logEvent?.(rule.label, `${sim.sub} [simulated]`);
+    showToast(`Alert sent: ${rule.label}`);
+  };
+
+  const dotColor = color => ({
+    primary:'var(--primary)', warning:'var(--warning)', danger:'var(--danger)',
+    purple:'var(--purple)',   info:'var(--info)',        success:'var(--success)',
+  }[color] || 'var(--t-muted)');
+
+  const iconBg  = color => ({
+    primary:'var(--primary-soft)', warning:'var(--warning-soft)', danger:'var(--danger-soft)',
+    purple:'var(--purple-soft)',   info:'var(--info-soft)',        success:'var(--success-soft)',
+  }[color] || 'var(--bg-muted)');
+
+  const iconColor = color => ({
+    primary:'var(--primary)', warning:'var(--warning)', danger:'var(--danger)',
+    purple:'var(--purple)',   info:'var(--info)',        success:'var(--success)',
+  }[color] || 'var(--t-muted)');
+
+  const severityKind = s => ({ critical:'danger', high:'warning', medium:'info', low:'success' }[s] || 'muted');
+
+  return (
+    <>
+      <section className="hero">
+        <div className="hero-text">
+          <span className="eyebrow">Notifications</span>
+          <h1 className="hero-title">Security <span className="accent">Alert Engine</span></h1>
+          <p className="hero-sub">Configure which events trigger real-time alerts and which channels deliver them.</p>
+        </div>
+        <div className="hero-actions">
+          <button className="btn btn--ghost" onClick={() => { setEnabled(new Set(ALERT_RULES.map(r=>r.id))); showToast('All alerts enabled.'); }}>
+            <Shield size={14}/> Enable all
+          </button>
+          <button className="btn btn--primary" onClick={simulate}>
+            <Activity size={14}/> Simulate alert
+          </button>
+        </div>
+      </section>
+
+      {/* Summary KPIs */}
+      <div className="kpi-grid" style={{marginBottom:20}}>
+        <KpiCard label="Active Rules"    value={enabled.size}   sup={`/${ALERT_RULES.length}`} iconKind="success"
+          pill="Configured" pillKind="neutral" compare={<>of {ALERT_RULES.length} rules enabled</>}><Shield size={15}/></KpiCard>
+        <KpiCard label="Active Channels" value={channels.size}  sup={`/${ALERT_CHANNELS.length}`} iconKind="primary"
+          pill="Delivery" pillKind="neutral" compare={<>notification channels on</>}><Mail size={15}/></KpiCard>
+        <KpiCard label="Simulated Today" value={triggered} iconKind={triggered>0?'warning':'info'}
+          pill="Test" pillKind="info" compare={<>alerts fired this session</>}><Activity size={15}/></KpiCard>
+      </div>
+
+      <div className="grid">
+        {/* Channels */}
+        <section className="col-12 card" style={{marginBottom:0}}>
+          <div className="card-head">
+            <div className="card-title-wrap">
+              <span className="eyebrow">Delivery</span>
+              <h2 className="card-title">Notification channels</h2>
+            </div>
+          </div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {ALERT_CHANNELS.map(ch => {
+              const on = channels.has(ch.id);
+              return (
+                <button key={ch.id} onClick={() => toggleChannel(ch.id)}
+                  className={on ? 'btn btn--primary btn--sm' : 'btn btn--ghost btn--sm'}
+                  style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',fontSize:12}}>
+                  {ch.icon} {ch.label}
+                  {on && <CheckCircle size={12} style={{marginLeft:2}}/>}
+                </button>
+              );
+            })}
+          </div>
+          {channels.size === 0 && (
+            <div className="adm-alert warning" style={{marginTop:12}}>
+              <AlertTriangle size={15}/><div>No channels active — alerts will be queued but not delivered.</div>
+            </div>
+          )}
+        </section>
+
+        {/* Alert Rules */}
+        <section className="col-12 card">
+          <div className="card-head">
+            <div className="card-title-wrap">
+              <span className="eyebrow">Rules</span>
+              <h2 className="card-title">Alert triggers — {enabled.size} of {ALERT_RULES.length} active</h2>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button className="btn btn--ghost btn--sm" onClick={() => setEnabled(new Set(ALERT_RULES.map(r=>r.id)))}>Enable all</button>
+              <button className="btn btn--ghost btn--sm" onClick={() => setEnabled(new Set())}>Disable all</button>
+            </div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            {ALERT_RULES.map(rule => {
+              const on = enabled.has(rule.id);
+              return (
+                <div key={rule.id} style={{
+                  display:'flex',alignItems:'flex-start',gap:12,padding:'14px 16px',
+                  border:`1px solid ${on?'var(--primary)':'var(--border-soft)'}`,
+                  borderRadius:12,background:'var(--bg-card)',transition:'border-color 200ms',
+                }}>
+                  <div style={{
+                    width:36,height:36,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',
+                    flexShrink:0,background:iconBg(rule.color),color:iconColor(rule.color),
+                  }}>
+                    {rule.icon}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:'var(--t-base)',marginBottom:2}}>{rule.label}</div>
+                    <div style={{fontSize:11.5,color:'var(--t-muted)',lineHeight:1.5,marginBottom:8}}>{rule.desc}</div>
+                    <span className={`tag ${severityKind(rule.severity)}`} style={{fontSize:10}}>{rule.severity}</span>
+                  </div>
+                  <label className="switch" style={{marginLeft:4,flexShrink:0}}>
+                    <input type="checkbox" checked={on} onChange={e => toggleRule(rule.id, e.target.checked)}/>
+                    <span className="track"/>
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Live feed */}
+        <section className="col-12 card">
+          <div className="card-head">
+            <div className="card-title-wrap">
+              <span className="eyebrow">Feed</span>
+              <h2 className="card-title">Live alert feed</h2>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--t-muted)'}}>
+              <span style={{width:7,height:7,borderRadius:'50%',background:'var(--success)',display:'inline-block',animation:'adm-spin 0s linear infinite'}}/>
+              Monitoring active
+            </div>
+          </div>
+          {feedItems.length === 0 ? (
+            <p style={{textAlign:'center',color:'var(--t-muted)',fontSize:13,padding:'28px 0'}}>
+              No alerts yet — click <strong>Simulate alert</strong> to test your configuration.
+            </p>
+          ) : (
+            feedItems.map(item => (
+              <div key={item.id} className="event-row">
+                <div className="event-dot" style={{background:dotColor(item.dot)}}/>
+                <div>
+                  <div className="event-text">{item.title}</div>
+                  <div className="event-sub">{item.sub}</div>
+                </div>
+                <div className="event-time" style={{fontFamily:'JetBrains Mono,monospace'}}>{item.time}</div>
+              </div>
+            ))
+          )}
+        </section>
+      </div>
+    </>
+  );
+}
+
+// ── Security Score Engine ─────────────────────────────────────────────────────
+function SecurityScoreEngine({ twofa, breaches, events, sessions, vault, vaultStats, sec, onNavigate }) {
+
+  // ── Factor definitions & scoring ─────────────────────────────────────────
+  const failedLogins = events.filter(e => e.event_type?.toLowerCase().includes('fail')).length;
+  const activeSessions = sec?.active_sessions ?? sessions.length ?? 0;
+
+  const factors = [
+    {
+      id: 'twofa',
+      label: '2FA enabled',
+      icon: <Shield size={18}/>,
+      weight: 25,
+      score: (() => {
+        if (twofa?.enabled) return 25;
+        return 0;
+      })(),
+      maxScore: 25,
+      status: twofa?.enabled ? 'pass' : 'fail',
+      detail: twofa?.enabled
+        ? `Active · ${twofa.recovery_codes_remaining ?? '?'} recovery codes remaining`
+        : 'Not configured — strongly recommended',
+      action: twofa?.enabled ? null : { label: 'Enable 2FA', tab: 'settings' },
+    },
+    {
+      id: 'breach',
+      label: 'Breach exposure',
+      icon: <AlertTriangle size={18}/>,
+      weight: 25,
+      score: (() => {
+        if (breaches.length === 0) return 25;
+        if (breaches.length === 1) return 10;
+        return 0;
+      })(),
+      maxScore: 25,
+      status: breaches.length === 0 ? 'pass' : 'fail',
+      detail: breaches.length === 0
+        ? 'No known breaches for your email'
+        : `${breaches.length} breach${breaches.length > 1 ? 'es' : ''} detected — change affected passwords`,
+      action: breaches.length > 0 ? { label: 'View breaches', tab: 'monitor' } : null,
+    },
+    {
+      id: 'password',
+      label: 'Password health',
+      icon: <Lock size={18}/>,
+      weight: 20,
+      score: (() => {
+        // Penalise for recent failed login bursts (brute-force signal)
+        if (failedLogins === 0) return 20;
+        if (failedLogins <= 2) return 14;
+        if (failedLogins <= 5) return 8;
+        return 0;
+      })(),
+      maxScore: 20,
+      status: failedLogins === 0 ? 'pass' : failedLogins <= 2 ? 'warn' : 'fail',
+      detail: failedLogins === 0
+        ? 'No failed login attempts detected'
+        : `${failedLogins} failed login${failedLogins > 1 ? 's' : ''} in recent history — review activity`,
+      action: failedLogins > 0 ? { label: 'View events', tab: 'monitor' } : null,
+    },
+    {
+      id: 'sessions',
+      label: 'Active sessions',
+      icon: <Smartphone size={18}/>,
+      weight: 15,
+      score: (() => {
+        if (activeSessions <= 1) return 15;
+        if (activeSessions <= 3) return 10;
+        if (activeSessions <= 6) return 5;
+        return 0;
+      })(),
+      maxScore: 15,
+      status: activeSessions <= 1 ? 'pass' : activeSessions <= 3 ? 'warn' : 'fail',
+      detail: activeSessions === 0
+        ? 'No other active sessions'
+        : `${activeSessions} device${activeSessions > 1 ? 's' : ''} signed in — review and revoke unused sessions`,
+      action: activeSessions > 2 ? { label: 'Manage sessions', tab: 'monitor' } : null,
+    },
+    {
+      id: 'vault',
+      label: 'Vault protection',
+      icon: <Eye size={18}/>,
+      weight: 15,
+      score: (() => {
+        if (vault.length === 0) return 8;           // no files — neutral
+        const health = vaultStats?.vault_health_score ?? 100;
+        if (health >= 90) return 15;
+        if (health >= 70) return 10;
+        return 4;
+      })(),
+      maxScore: 15,
+      status: vault.length === 0 ? 'warn' : (vaultStats?.vault_health_score ?? 100) >= 90 ? 'pass' : 'warn',
+      detail: vault.length === 0
+        ? 'No files stored — vault is available and ready'
+        : `${vault.length} file${vault.length > 1 ? 's' : ''} encrypted · Vault health ${vaultStats?.vault_health_score ?? '—'}%`,
+      action: vault.length === 0 ? { label: 'Open vault', tab: 'vault' } : null,
+    },
+  ];
+
+  const totalScore  = factors.reduce((s, f) => s + f.score, 0);
+  const maxPossible = factors.reduce((s, f) => s + f.maxScore, 0);
+  const pct         = Math.round((totalScore / maxPossible) * 100);
+
+  const grade = pct >= 90 ? { label:'A', color:'var(--success)' }
+              : pct >= 75 ? { label:'B', color:'var(--info)'    }
+              : pct >= 60 ? { label:'C', color:'var(--warning)' }
+              :              { label:'D', color:'var(--danger)'  };
+
+  const riskLabel = pct >= 80 ? 'Low risk' : pct >= 60 ? 'Medium risk' : 'High risk';
+  const riskKind  = pct >= 80 ? 'success'  : pct >= 60 ? 'warning'     : 'danger';
+
+  // Arc SVG (semicircle gauge)
+  const ARC_R = 70, ARC_CX = 100, ARC_CY = 95;
+  const arcLen = Math.PI * ARC_R; // half-circle circumference
+  const arcFill = arcLen * (pct / 100);
+  const arcOffset = arcLen - arcFill;
+
+  return (
+    <>
+      <section className="hero">
+        <div className="hero-text">
+          <span className="eyebrow">Security</span>
+          <h1 className="hero-title">Security <span className="accent">Score Engine</span></h1>
+          <p className="hero-sub">Your account's overall protection level, computed across five security pillars.</p>
+        </div>
+      </section>
+
+      {/* ── Gauge + grade ── */}
+      <div className="grid" style={{marginBottom:0}}>
+        <section className="col-6 card" style={{display:'flex',flexDirection:'column',alignItems:'center',paddingBottom:28}}>
+          {/* SVG arc gauge */}
+          <svg viewBox="0 0 200 110" width="260" style={{overflow:'visible',marginBottom:4}}>
+            {/* track */}
+            <path
+              d={`M ${ARC_CX - ARC_R} ${ARC_CY} A ${ARC_R} ${ARC_R} 0 0 1 ${ARC_CX + ARC_R} ${ARC_CY}`}
+              fill="none" stroke="var(--border)" strokeWidth="12" strokeLinecap="round"
+            />
+            {/* fill */}
+            <path
+              d={`M ${ARC_CX - ARC_R} ${ARC_CY} A ${ARC_R} ${ARC_R} 0 0 1 ${ARC_CX + ARC_R} ${ARC_CY}`}
+              fill="none"
+              stroke={grade.color}
+              strokeWidth="12"
+              strokeLinecap="round"
+              strokeDasharray={`${arcLen}`}
+              strokeDashoffset={`${arcOffset}`}
+              style={{transition:'stroke-dashoffset 1.2s cubic-bezier(.2,.7,.2,1), stroke .4s'}}
+            />
+            {/* score label */}
+            <text x={ARC_CX} y={ARC_CY - 8} textAnchor="middle"
+              style={{fontFamily:"'Inter Tight','Inter',sans-serif",fontSize:34,fontWeight:700,fill:grade.color}}>
+              {pct}
+            </text>
+            <text x={ARC_CX} y={ARC_CY + 12} textAnchor="middle"
+              style={{fontFamily:"'Inter',sans-serif",fontSize:11,fill:'var(--t-muted)',letterSpacing:'0.05em'}}>
+              OUT OF 100
+            </text>
+          </svg>
+
+          {/* Grade + risk */}
+          <div style={{display:'flex',alignItems:'center',gap:12,marginTop:4}}>
+            <span style={{
+              width:44,height:44,borderRadius:12,background:grade.color,
+              color:'#fff',display:'grid',placeItems:'center',
+              fontFamily:"'Inter Tight',sans-serif",fontSize:22,fontWeight:700,flexShrink:0,
+            }}>{grade.label}</span>
+            <div>
+              <div style={{fontSize:16,fontWeight:700,color:'var(--t-base)',fontFamily:"'Inter Tight',sans-serif",letterSpacing:'-0.02em'}}>
+                Security Score: <span style={{color:grade.color}}>{pct}/100</span>
+              </div>
+              <div style={{fontSize:12,color:'var(--t-muted)',marginTop:2}}>
+                <span className={`tag ${riskKind}`} style={{fontSize:10,marginRight:6}}>{riskLabel}</span>
+                {factors.filter(f=>f.status==='fail').length > 0
+                  ? `${factors.filter(f=>f.status==='fail').length} issue${factors.filter(f=>f.status==='fail').length>1?'s':''} need attention`
+                  : 'All checks passing'}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Score breakdown bars ── */}
+        <section className="col-6 card">
+          <div className="card-head">
+            <div className="card-title-wrap">
+              <span className="eyebrow">Breakdown</span>
+              <h2 className="card-title">Score by pillar</h2>
+            </div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            {factors.map(f => {
+              const pctF = Math.round((f.score / f.maxScore) * 100);
+              const barColor = f.status==='pass' ? 'var(--success)' : f.status==='warn' ? 'var(--warning)' : 'var(--danger)';
+              return (
+                <div key={f.id}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{
+                        width:28,height:28,borderRadius:7,display:'grid',placeItems:'center',flexShrink:0,
+                        background: f.status==='pass'?'var(--success-soft)':f.status==='warn'?'var(--warning-soft)':'var(--danger-soft)',
+                        color: barColor,
+                      }}>{f.icon}</span>
+                      <span style={{fontSize:13,fontWeight:600,color:'var(--t-base)'}}>{f.label}</span>
+                    </div>
+                    <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,fontWeight:600,color:barColor}}>
+                      {f.score}/{f.maxScore}
+                    </span>
+                  </div>
+                  <div className="progress" style={{height:6,borderRadius:3,background:'var(--border-soft)'}}>
+                    <div className="progress-fill" style={{
+                      width:`${pctF}%`,background:barColor,borderRadius:3,
+                      transition:'width 1s cubic-bezier(.2,.7,.2,1)',
+                    }}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+
+      {/* ── Factor detail cards ── */}
+      <div className="grid" style={{marginTop:0}}>
+        <section className="col-12 card">
+          <div className="card-head">
+            <div className="card-title-wrap">
+              <span className="eyebrow">Details</span>
+              <h2 className="card-title">Factor analysis</h2>
+            </div>
+            <span style={{fontSize:12,color:'var(--t-muted)',fontFamily:"'JetBrains Mono',monospace"}}>
+              {totalScore} / {maxPossible} pts
+            </span>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            {factors.map(f => {
+              const statusColor = f.status==='pass'?'var(--success)':f.status==='warn'?'var(--warning)':'var(--danger)';
+              const statusBg    = f.status==='pass'?'var(--success-soft)':f.status==='warn'?'var(--warning-soft)':'var(--danger-soft)';
+              const statusLabel = f.status==='pass'?'Pass':f.status==='warn'?'Review':'Action needed';
+              return (
+                <div key={f.id} style={{
+                  display:'flex',alignItems:'flex-start',gap:12,padding:'14px 16px',
+                  border:`1px solid ${f.status==='fail'?'var(--danger)':f.status==='warn'?'var(--warning)':'var(--border-soft)'}`,
+                  borderRadius:12,background:'var(--bg-card)',
+                }}>
+                  <div style={{
+                    width:38,height:38,borderRadius:10,display:'grid',placeItems:'center',flexShrink:0,
+                    background:statusBg,color:statusColor,
+                  }}>{f.icon}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:3}}>
+                      <span style={{fontSize:13,fontWeight:600,color:'var(--t-base)'}}>{f.label}</span>
+                      <span className={`badge ${f.status==='pass'?'success':f.status==='warn'?'warning':'danger'}`}
+                        style={{fontSize:10}}>{statusLabel}</span>
+                    </div>
+                    <div style={{fontSize:12,color:'var(--t-muted)',lineHeight:1.5,marginBottom:f.action?8:0}}>
+                      {f.detail}
+                    </div>
+                    {f.action && (
+                      <button className="btn btn--ghost btn--sm"
+                        style={{fontSize:11,padding:'3px 10px',marginTop:2}}
+                        onClick={() => onNavigate(f.action.tab)}>
+                        {f.action.label} →
+                      </button>
+                    )}
+                  </div>
+                  <div style={{
+                    fontFamily:"'JetBrains Mono',monospace",fontSize:11,fontWeight:700,
+                    color:statusColor,flexShrink:0,minWidth:28,textAlign:'right',paddingTop:2,
+                  }}>{f.score}<span style={{opacity:.5,fontWeight:400}}>/{f.maxScore}</span></div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
+
 export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
   const [tab,    setTab]    = useState('overview');
   const [theme,  setTheme]  = useState(() => { try { return localStorage.getItem('sv-theme')||'light'; } catch { return 'light'; } });
@@ -221,10 +706,46 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
   const [drag,setDrag]            = useState(false);
   const [vaultStats,setVaultStats] = useState(null);
   const [checkingId,setCheckingId] = useState(null);
+  // ── 2FA state ──
+  const [twofa,      setTwofa]      = useState(null);   // {enabled, recovery_codes_remaining}
+  const [twofaStep,  setTwofaStep]  = useState('idle'); // idle | setup | confirm | disable | regen | codes
+  const [twofaSetup, setTwofaSetup] = useState(null);   // {secret, provisioning_uri}
+  const [twofaCodes, setTwofaCodes] = useState([]);     // plaintext recovery codes (shown once)
+  const [twofaCode,  setTwofaCode]  = useState('');     // input code
+  const [twofaErr,   setTwofaErr]   = useState('');
+  const [twofaBusy,  setTwofaBusy]  = useState(false);
+  // ── Session management state ──
+  const [sessions,      setSessions]      = useState([]);
+  const [sessLoading,   setSessLoading]   = useState(false);
+  const [revokingId,    setRevokingId]    = useState(null);  // id being revoked
+  const [trustingId,    setTrustingId]    = useState(null);  // id being trusted
+  const [renamingId,    setRenamingId]    = useState(null);  // id being renamed
+  const [renameVal,     setRenameVal]     = useState('');
+  const [revokeAllBusy, setRevokeAllBusy] = useState(false);
   const fileRef = useRef(null);
 
   const toggleTheme = () => setTheme(t => { const n=t==='dark'?'light':'dark'; try{localStorage.setItem('sv-theme',n);}catch{} return n; });
   const showToast = (msg, type='success') => { setToast({msg,type}); setTimeout(()=>setToast(null),4000); };
+
+  // ── Activity Log ─────────────────────────────────────────────────────────
+  const [activityLog, setActivityLog] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sv-activity-log') || '[]'); } catch { return []; }
+  });
+
+  const logEvent = (type, detail = '') => {
+    const entry = { id: Date.now() + Math.random(), type, detail, ts: new Date().toISOString() };
+    setActivityLog(prev => {
+      const next = [entry, ...prev].slice(0, 200);
+      try { localStorage.setItem('sv-activity-log', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const clearActivityLog = () => {
+    setActivityLog([]);
+    try { localStorage.removeItem('sv-activity-log'); } catch {}
+    showToast('Activity log cleared.');
+  };
 
   const loadIntel = async () => {
     setIntelLoading(true);
@@ -237,25 +758,39 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
 
   const loadAll = useCallback(async (silent=false) => {
     if(!silent) setLoading(true); else setRefreshing(true);
-    const [d,s,e,b,v,em,p,vs] = await Promise.allSettled([
+    const [d,s,e,b,v,em,p,vs,tf] = await Promise.allSettled([
       dashboardAPI.getDashboardData(), dashboardAPI.getSecurityOverview(),
       dashboardAPI.getSecurityEvents(25), dashboardAPI.getBreachData(),
       dashboardAPI.getVaultFiles(), dashboardAPI.getEmailSecurity(), dashboardAPI.getProfile(),
-      dashboardAPI.getVaultStorageStats(),
+      dashboardAPI.getVaultStorageStats(), dashboardAPI.get2FAStatus(),
     ]);
     if(d.status==='fulfilled'){ const r=d.value?.data||d.value; setDash(r); setConnected(r?.connectedAccounts||[]); }
     if(s.status==='fulfilled') setSec(s.value?.data||s.value);
-    if(e.status==='fulfilled') setEvents(e.value?.data?.events||[]);
+    if(e.status==='fulfilled') {
+      const evts = e.value?.data?.events||[];
+      setEvents(evts);
+      // Seed activity log from server-side security events (login success/failure)
+      evts.forEach(ev => {
+        const t = ev.event_type?.toLowerCase()||'';
+        if(t.includes('login') || t.includes('auth') || t.includes('fail')) {
+          const type = (t.includes('fail')||t.includes('block')) ? 'Login Failure' : 'Login Success';
+          const detail = [ev.ip_address, ev.user_agent?.slice(0,40)].filter(Boolean).join(' · ') || '—';
+          logEvent(type, detail);
+        }
+      });
+    }
     if(b.status==='fulfilled') setBreaches(b.value?.breaches?.breaches||[]);
     if(v.status==='fulfilled') setVault((v.value?.files||[]).map(f=>({...f,status:'secured'})));
     if(vs?.status==='fulfilled') setVaultStats(vs.value);
     if(em.status==='fulfilled') setEmailSec(em.value);
     if(p.status==='fulfilled'){ const pr=p.value; setProfile(pr); setProfForm({full_name:pr.full_name||'',phone:pr.phone||'',country:pr.country||'',date_of_birth:pr.date_of_birth||''}); }
+    if(tf.status==='fulfilled') setTwofa(tf.value);
     setLoading(false); setRefreshing(false); setLastRefreshed(new Date());
   },[]);
 
   useEffect(()=>{ loadAll(); },[loadAll]);
   useEffect(()=>{ const f=sessionStorage.getItem('oauth_connecting'); if(f){ sessionStorage.removeItem('oauth_connecting'); const t=setTimeout(()=>loadAll(true),800); return()=>clearTimeout(t); } },[]);
+  useEffect(()=>{ if(tab==='monitor' && sessions.length===0) loadSessions(); },[tab]);
 
   const upload = async files => {
     setUploadErr('');
@@ -266,11 +801,12 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
         const r=await dashboardAPI.uploadFile(file,pct=>setVault(p=>p.map(f=>f.id===tmp?{...f,progress:pct}:f)));
         const uf=r.file;
         setVault(p=>p.map(f=>f.id===tmp?{...f,id:uf.id,file_name:uf.file_name,size_bytes:uf.size_bytes,uploaded_at:uf.uploaded_at,status:'secured',progress:100}:f));
+        logEvent('File Uploaded', file.name);
       } catch(err){ setVault(p=>p.map(f=>f.id===tmp?{...f,status:'failed',error:err.message}:f)); setUploadErr(err.message||'Upload failed'); }
     }
   };
-  const deleteFile = async id => { if(!confirm('Delete this file?')) return; try{ await dashboardAPI.deleteVaultFile(id); setVault(p=>p.filter(f=>f.id!==id)); showToast('File deleted.'); }catch(e){ showToast(e.message,'error'); } };
-  const downloadFile = async (id, name) => { try{ showToast('Preparing download…','info'); await dashboardAPI.downloadVaultFile(id, name); }catch(e){ showToast(e.message||'Download failed','error'); } };
+  const deleteFile = async id => { if(!confirm('Delete this file?')) return; try{ await dashboardAPI.deleteVaultFile(id); setVault(p=>p.filter(f=>f.id!==id)); logEvent('File Deleted', vault.find(f=>f.id===id)?.file_name||id); showToast('File deleted.'); }catch(e){ showToast(e.message,'error'); } };
+  const downloadFile = async (id, name) => { try{ showToast('Preparing download…','info'); await dashboardAPI.downloadVaultFile(id, name); logEvent('File Downloaded', name); }catch(e){ showToast(e.message||'Download failed','error'); } };
   const checkIntegrity = async (id) => {
     setCheckingId(id);
     try{
@@ -280,14 +816,117 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
     }catch(e){ showToast(e.message||'Check failed','error'); }
     finally{ setCheckingId(null); }
   };
-  const saveProfile = async () => { setProfSaving(true); try{ await dashboardAPI.updateProfile(profForm); setProfSaved(true); showToast('Profile saved.'); setTimeout(()=>setProfSaved(false),3000); }catch(e){ showToast(e.message||'Save failed.','error'); } finally{ setProfSaving(false); } };
+  const saveProfile = async () => { setProfSaving(true); try{ await dashboardAPI.updateProfile(profForm); setProfSaved(true); logEvent('Password Changed', 'Profile / account details updated'); showToast('Profile saved.'); setTimeout(()=>setProfSaved(false),3000); }catch(e){ showToast(e.message||'Save failed.','error'); } finally{ setProfSaving(false); } };
+
+  // ── 2FA handlers ─────────────────────────────────────────────────────────
+  const twofa_begin = async () => {
+    setTwofaBusy(true); setTwofaErr('');
+    try {
+      const res = await dashboardAPI.begin2FASetup();
+      setTwofaSetup(res);
+      setTwofaStep('setup');
+      setTwofaCode('');
+    } catch(e){ setTwofaErr(e.message||'Setup failed'); }
+    finally{ setTwofaBusy(false); }
+  };
+
+  const twofa_confirm = async () => {
+    if(!twofaCode.trim()){ setTwofaErr('Enter the 6-digit code from your app.'); return; }
+    setTwofaBusy(true); setTwofaErr('');
+    try {
+      const res = await dashboardAPI.confirm2FASetup(twofaCode.trim());
+      setTwofa({ enabled: true, recovery_codes_remaining: res.recovery_codes?.length || 8 });
+      setTwofaCodes(res.recovery_codes || []);
+      setTwofaStep('codes');
+      setTwofaCode('');
+      logEvent('2FA Enabled', 'TOTP authenticator configured');
+      showToast('2FA enabled successfully!');
+    } catch(e){ setTwofaErr(e.message||'Invalid code — check your authenticator app'); }
+    finally{ setTwofaBusy(false); }
+  };
+
+  const twofa_disable = async () => {
+    if(!twofaCode.trim()){ setTwofaErr('Enter your authenticator code to confirm.'); return; }
+    setTwofaBusy(true); setTwofaErr('');
+    try {
+      await dashboardAPI.disable2FA(twofaCode.trim());
+      setTwofa({ enabled: false, recovery_codes_remaining: 0 });
+      setTwofaStep('idle');
+      setTwofaCode('');
+      logEvent('2FA Disabled', 'Two-factor authentication turned off');
+      showToast('2FA disabled.');
+    } catch(e){ setTwofaErr(e.message||'Invalid code'); }
+    finally{ setTwofaBusy(false); }
+  };
+
+  const twofa_regen = async () => {
+    if(!twofaCode.trim()){ setTwofaErr('Enter your authenticator code to regenerate.'); return; }
+    setTwofaBusy(true); setTwofaErr('');
+    try {
+      const res = await dashboardAPI.regenerateRecoveryCodes(twofaCode.trim());
+      setTwofaCodes(res.recovery_codes || []);
+      setTwofa(p => ({ ...p, recovery_codes_remaining: res.recovery_codes?.length || 8 }));
+      setTwofaStep('codes');
+      setTwofaCode('');
+      showToast('Recovery codes regenerated.');
+    } catch(e){ setTwofaErr(e.message||'Invalid code'); }
+    finally{ setTwofaBusy(false); }
+  };
+
+  // ── Session management handlers ──────────────────────────────────────────
+  const loadSessions = async () => {
+    setSessLoading(true);
+    try { const r = await dashboardAPI.getSessions(); setSessions(r.sessions||[]); }
+    catch(e){ showToast(e.message||'Failed to load sessions', 'error'); }
+    finally { setSessLoading(false); }
+  };
+
+  const revokeSession = async (id) => {
+    setRevokingId(id);
+    try {
+      await dashboardAPI.revokeSession(id);
+      setSessions(s => s.filter(x => x.id !== id));
+      showToast('Device signed out.');
+    } catch(e){ showToast(e.message||'Failed to revoke session', 'error'); }
+    finally { setRevokingId(null); }
+  };
+
+  const revokeAllSessions = async () => {
+    setRevokeAllBusy(true);
+    try {
+      await dashboardAPI.revokeAllSessions();
+      showToast('All devices signed out.');
+      setTimeout(() => { onLogout?.(); }, 1200);
+    } catch(e){ showToast(e.message||'Failed', 'error'); }
+    finally { setRevokeAllBusy(false); }
+  };
+
+  const toggleTrust = async (s) => {
+    setTrustingId(s.id);
+    try {
+      await dashboardAPI.trustDevice(s.id, !s.trusted);
+      setSessions(prev => prev.map(x => x.id === s.id ? {...x, trusted: !s.trusted} : x));
+      showToast(s.trusted ? 'Device unmarked as trusted.' : 'Device marked as trusted.');
+    } catch(e){ showToast(e.message||'Failed', 'error'); }
+    finally { setTrustingId(null); }
+  };
+
+  const submitRename = async (id) => {
+    if(!renameVal.trim()) return;
+    try {
+      await dashboardAPI.renameDevice(id, renameVal.trim());
+      setSessions(prev => prev.map(x => x.id === id ? {...x, device_name: renameVal.trim()} : x));
+      setRenamingId(null); setRenameVal('');
+      showToast('Device renamed.');
+    } catch(e){ showToast(e.message||'Failed', 'error'); }
+  };
   const connectProvider = async provider => {
     setConnecting(provider);
-    try{ const fn=provider==='google'?dashboardAPI.getGoogleOAuthUrl:dashboardAPI.getMicrosoftOAuthUrl; const r=await fn(); sessionStorage.setItem('oauth_connecting',provider); window.location.href=r.url; }
+    try{ const fn=provider==='google'?dashboardAPI.getGoogleOAuthUrl:dashboardAPI.getMicrosoftOAuthUrl; const r=await fn(); sessionStorage.setItem('oauth_connecting',provider); logEvent('Account Linked', `${provider} OAuth initiated`); window.location.href=r.url; }
     catch(e){ showToast(e.message||`${provider} OAuth not configured.`,'error'); }
     finally{ setConnecting(''); }
   };
-  const disconnectProvider = async provider => { if(!confirm(`Disconnect ${provider}?`)) return; try{ await dashboardAPI.disconnectAccount(provider); setConnected(p=>p.filter(a=>a.provider!==provider)); showToast(`${provider} disconnected.`); }catch(e){ showToast(e.message,'error'); } };
+  const disconnectProvider = async provider => { if(!confirm(`Disconnect ${provider}?`)) return; try{ await dashboardAPI.disconnectAccount(provider); setConnected(p=>p.filter(a=>a.provider!==provider)); logEvent('Account Unlinked', `${provider} account disconnected`); showToast(`${provider} disconnected.`); }catch(e){ showToast(e.message,'error'); } };
   const connAcc = p => connected.find(a=>a.provider===p);
   const score = sec?.security_score??0;
   const rl    = sec?.risk_level||'low';
@@ -398,7 +1037,7 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
 
                 <div className="kpi-grid">
                   <KpiCard label="Security Score" value={score} sup="/100" iconKind="success" pill={score>=80?'Excellent':score>=60?'Good':'At Risk'} pillKind={score>=80?'up':score>=60?'neutral':'down'}
-                    compare={<>overall account health</>}>
+                    compare={<><a style={{cursor:'pointer',color:'var(--primary)'}} onClick={()=>setTab('score')}>View full breakdown →</a></>}>
                     <Shield size={15}/>
                   </KpiCard>
                   <KpiCard label="Risk Level" value={rl.charAt(0).toUpperCase()+rl.slice(1)} iconKind={rl==='low'?'success':rl==='medium'?'warning':'danger'}
@@ -413,6 +1052,11 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
                   <KpiCard label="Security Events" value={events.length} iconKind="info" pill="7 days" pillKind="info"
                     compare={<><strong>{events.filter(e=>e.event_type?.toLowerCase().includes('fail')).length}</strong> failures detected</>}>
                     <Activity size={15}/>
+                  </KpiCard>
+                  <KpiCard label="2FA Status" value={twofa?.enabled?'Active':'Off'} iconKind={twofa?.enabled?'success':'warning'}
+                    pill={twofa?.enabled?'Protected':'Recommended'} pillKind={twofa?.enabled?'up':'down'}
+                    compare={twofa?.enabled?<>{twofa.recovery_codes_remaining} recovery codes left</>:<><a style={{cursor:'pointer',color:'var(--accent)'}} onClick={()=>setTab('settings')}>Enable now →</a></>}>
+                    <Shield size={15}/>
                   </KpiCard>
                 </div>
 
@@ -782,22 +1426,123 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
                     <div className="card-head">
                       <div className="card-title-wrap">
                         <span className="eyebrow">Sessions</span>
-                        <h2 className="card-title">Active sessions</h2>
+                        <h2 className="card-title">Active devices</h2>
+                      </div>
+                      <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                        <button className="btn btn--ghost btn--sm" onClick={loadSessions} disabled={sessLoading}>
+                          <RefreshCw size={12}/> {sessLoading?'Loading…':'Refresh'}
+                        </button>
+                        <button className="btn btn--soft-danger btn--sm" onClick={revokeAllSessions} disabled={revokeAllBusy}
+                          title="Sign out all devices including this one">
+                          <LogOut size={12}/> {revokeAllBusy?'Signing out…':'Logout all devices'}
+                        </button>
                       </div>
                     </div>
-                    {(dash?.sessions||[]).length===0
-                      ? <p style={{color:'var(--t-muted)',fontSize:13,textAlign:'center',padding:'24px 0'}}>No session data available.</p>
-                      : (dash.sessions||[]).map((s,i)=>(
-                        <div key={i} className="session-row">
-                          <div className="session-icon"><Smartphone size={16}/></div>
-                          <div className="session-meta">
-                            <div className="session-name">{s.device||s.user_agent?.slice(0,40)||'Unknown device'}</div>
-                            <div className="session-sub">{s.ip_address||'—'} · {ago(s.created_at||s.last_seen)}</div>
-                          </div>
-                          <span className="badge success dot">Active</span>
+
+                    {/* Use sessions from loadSessions if available, fall back to dash.sessions */}
+                    {(()=>{
+                      const list = sessions.length > 0 ? sessions : (dash?.sessions||[]);
+                      if(list.length===0) return (
+                        <div style={{textAlign:'center',padding:'28px 0',color:'var(--t-muted)',fontSize:13}}>
+                          <Smartphone size={28} style={{opacity:.3,marginBottom:8,display:'block',margin:'0 auto 8px'}}/>
+                          No active sessions found.
+                          <br/><button className="btn btn--ghost btn--sm" style={{marginTop:10}} onClick={loadSessions}>Load sessions</button>
                         </div>
-                      ))
-                    }
+                      );
+                      return list.map((s) => {
+                        const isRenaming = renamingId === s.id;
+                        const DeviceIcon = s.icon==='mobile' ? Smartphone : s.icon==='terminal' ? Activity : () => (
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                          </svg>
+                        );
+                        return (
+                          <div key={s.id} className="session-row" style={{alignItems:'flex-start',gap:14,padding:'14px 0'}}>
+                            {/* Icon */}
+                            <div className="session-icon" style={{
+                              background: s.trusted ? 'var(--success-soft)' : s.is_current ? 'var(--primary-soft)' : 'var(--bg-muted)',
+                              color: s.trusted ? 'var(--success)' : s.is_current ? 'var(--primary)' : 'var(--t-muted)',
+                              width:38, height:38, borderRadius:10,
+                            }}>
+                              <DeviceIcon size={16}/>
+                            </div>
+
+                            {/* Meta */}
+                            <div className="session-meta" style={{flex:1}}>
+                              {isRenaming ? (
+                                <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:4}}>
+                                  <input
+                                    className="input" value={renameVal} autoFocus
+                                    onChange={e=>setRenameVal(e.target.value)}
+                                    onKeyDown={e=>{ if(e.key==='Enter') submitRename(s.id); if(e.key==='Escape'){setRenamingId(null);setRenameVal('');} }}
+                                    placeholder={s.device_name}
+                                    style={{maxWidth:220,fontSize:12,padding:'4px 8px',height:28}}
+                                  />
+                                  <button className="btn btn--primary btn--sm" style={{padding:'4px 10px',fontSize:11}} onClick={()=>submitRename(s.id)}>Save</button>
+                                  <button className="btn btn--ghost btn--sm" style={{padding:'4px 8px',fontSize:11}} onClick={()=>{setRenamingId(null);setRenameVal('');}}>✕</button>
+                                </div>
+                              ) : (
+                                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                                  <span className="session-name">{s.device_name}</span>
+                                  {s.is_current && <span className="badge success" style={{fontSize:9,padding:'2px 6px'}}>Current</span>}
+                                  {s.trusted && !s.is_current && <span className="badge primary" style={{fontSize:9,padding:'2px 6px'}}>Trusted</span>}
+                                </div>
+                              )}
+                              <div className="session-sub" style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                                <span>{s.os} · {s.browser}</span>
+                                <span>·</span>
+                                <span>{s.ip_address}</span>
+                                <span>·</span>
+                                <span>{s.location}</span>
+                                <span>·</span>
+                                <span>Last active {ago(s.last_used_at)}</span>
+                              </div>
+                              <div className="session-sub" style={{marginTop:2,fontSize:11}}>
+                                Signed in {ago(s.created_at)}
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0,flexWrap:'wrap',justifyContent:'flex-end'}}>
+                              {/* Rename */}
+                              <button
+                                className="btn btn--ghost btn--sm"
+                                style={{padding:'4px 8px',fontSize:11}}
+                                title="Rename this device"
+                                onClick={()=>{ setRenamingId(s.id); setRenameVal(s.device_name); }}
+                              >
+                                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight:3}}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                Rename
+                              </button>
+                              {/* Trust toggle */}
+                              <button
+                                className={`btn btn--sm ${s.trusted ? 'btn--ghost' : 'btn--ghost'}`}
+                                style={{padding:'4px 8px',fontSize:11,color: s.trusted?'var(--warning)':'var(--success)'}}
+                                title={s.trusted?'Remove trusted status':'Mark as trusted device'}
+                                onClick={()=>toggleTrust(s)}
+                                disabled={trustingId===s.id}
+                              >
+                                <Shield size={11} style={{marginRight:3}}/>
+                                {trustingId===s.id ? '…' : s.trusted ? 'Untrust' : 'Trust'}
+                              </button>
+                              {/* Revoke */}
+                              {!s.is_current && (
+                                <button
+                                  className="btn btn--soft-danger btn--sm"
+                                  style={{padding:'4px 8px',fontSize:11}}
+                                  title="Sign out this device"
+                                  onClick={()=>revokeSession(s.id)}
+                                  disabled={revokingId===s.id}
+                                >
+                                  <X size={11} style={{marginRight:3}}/>
+                                  {revokingId===s.id ? 'Revoking…' : 'Revoke'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </section>
                 </div>
               </>
@@ -1148,9 +1893,335 @@ export default function Dashboard({ onLogout, onSwitchView, user: propUser }) {
                       </button>
                     </div>
                   </section>
+
+                  {/* ── 2FA Card ── */}
+                  <section className="col-12 card">
+                    <div className="card-head">
+                      <div className="card-title-wrap">
+                        <span className="eyebrow">Security</span>
+                        <h2 className="card-title">Two-Factor Authentication (2FA)</h2>
+                      </div>
+                      {twofa?.enabled && twofaStep==='idle' && (
+                        <span className="badge badge--success" style={{alignSelf:'center'}}>
+                          <CheckCircle size={12} style={{marginRight:4}}/>Enabled
+                        </span>
+                      )}
+                      {!twofa?.enabled && twofaStep==='idle' && (
+                        <span className="badge badge--warning" style={{alignSelf:'center'}}>Not enabled</span>
+                      )}
+                    </div>
+
+                    {/* ── idle: not enabled ── */}
+                    {twofaStep==='idle' && !twofa?.enabled && (
+                      <div>
+                        <p style={{marginBottom:16,opacity:.75,fontSize:'.9rem',lineHeight:1.6}}>
+                          Add an extra layer of protection to your account. After entering your email OTP, you'll also be asked for a 6-digit code from your authenticator app. Works with <strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong>, Authy, and any TOTP-compatible app.
+                        </p>
+                        {twofaErr && <div className="alert alert--danger" style={{marginBottom:12}}>{twofaErr}</div>}
+                        <button className="btn btn--primary" onClick={twofa_begin} disabled={twofaBusy}>
+                          <Shield size={14}/> {twofaBusy?'Generating…':'Set up 2FA'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ── idle: enabled ── */}
+                    {twofaStep==='idle' && twofa?.enabled && (
+                      <div>
+                        <div style={{display:'flex',flexWrap:'wrap',gap:16,marginBottom:20}}>
+                          <div className="kpi-card c-success" style={{flex:'1 1 180px',minWidth:160}}>
+                            <div className="kpi-top"><div className="kpi-identity"><div className="kpi-icon success"><Shield size={16}/></div><div className="kpi-label">Status</div></div></div>
+                            <div className="kpi-value" style={{fontSize:'1rem'}}>Active</div>
+                          </div>
+                          <div className="kpi-card c-primary" style={{flex:'1 1 180px',minWidth:160}}>
+                            <div className="kpi-top"><div className="kpi-identity"><div className="kpi-icon primary"><Lock size={16}/></div><div className="kpi-label">Recovery codes</div></div></div>
+                            <div className="kpi-value" style={{fontSize:'1rem'}}>{twofa.recovery_codes_remaining} remaining</div>
+                          </div>
+                        </div>
+                        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                          <button className="btn btn--ghost" onClick={()=>{ setTwofaStep('regen'); setTwofaCode(''); setTwofaErr(''); }}>
+                            <RefreshCw size={13}/> Regenerate recovery codes
+                          </button>
+                          <button className="btn btn--soft-danger" onClick={()=>{ setTwofaStep('disable'); setTwofaCode(''); setTwofaErr(''); }}>
+                            <X size={13}/> Disable 2FA
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── setup: show QR + secret ── */}
+                    {twofaStep==='setup' && twofaSetup && (
+                      <div style={{display:'flex',flexDirection:'column',gap:20}}>
+                        <div style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start'}}>
+                          <div style={{flexShrink:0}}>
+                            <p style={{marginBottom:8,fontWeight:600,fontSize:'.85rem'}}>1. Scan with your authenticator app</p>
+                            <div style={{background:'#fff',padding:12,borderRadius:8,display:'inline-block',border:'1px solid var(--border)'}}>
+                              <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(twofaSetup.provisioning_uri)}`}
+                                alt="QR code" width={160} height={160} style={{display:'block'}}
+                              />
+                            </div>
+                            <p style={{marginTop:8,fontSize:'.75rem',opacity:.6,textAlign:'center'}}>
+                              Google Authenticator · Microsoft Authenticator · Authy
+                            </p>
+                          </div>
+                          <div style={{flex:1,minWidth:200}}>
+                            <p style={{marginBottom:8,fontWeight:600,fontSize:'.85rem'}}>Can't scan? Enter the key manually</p>
+                            <div style={{background:'var(--surface-raised)',border:'1px solid var(--border)',borderRadius:6,padding:'10px 14px',fontFamily:'monospace',fontSize:'.8rem',letterSpacing:'0.08em',wordBreak:'break-all',marginBottom:12}}>
+                              {twofaSetup.secret}
+                            </div>
+                            <p style={{fontSize:'.78rem',opacity:.65,lineHeight:1.5}}>
+                              Open your authenticator app → tap <strong>"+"</strong> or <strong>"Add account"</strong> → choose <em>Time-based</em> → scan QR or enter the key above.
+                            </p>
+                          </div>
+                        </div>
+                        <div>
+                          <p style={{marginBottom:8,fontWeight:600,fontSize:'.85rem'}}>2. Enter the 6-digit code to confirm</p>
+                          <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+                            <input
+                              className="input" inputMode="numeric" maxLength={6}
+                              placeholder="000000" value={twofaCode}
+                              onChange={e=>setTwofaCode(e.target.value.replace(/\D/g,''))}
+                              style={{maxWidth:160,textAlign:'center',letterSpacing:'0.25em',fontSize:'1.1rem'}}
+                              autoFocus
+                            />
+                            <button className="btn btn--primary" onClick={twofa_confirm} disabled={twofaBusy||twofaCode.length!==6}>
+                              {twofaBusy?'Verifying…':'Confirm & enable'}
+                            </button>
+                            <button className="btn btn--ghost" onClick={()=>{ setTwofaStep('idle'); setTwofaCode(''); setTwofaErr(''); }}>
+                              Cancel
+                            </button>
+                          </div>
+                          {twofaErr && <div className="alert alert--danger" style={{marginTop:10}}>{twofaErr}</div>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── show recovery codes (once) ── */}
+                    {twofaStep==='codes' && (
+                      <div>
+                        <div className="alert alert--warning" style={{marginBottom:16}}>
+                          <strong>Save these recovery codes now.</strong> They won't be shown again. Each code can only be used once to sign in if you lose access to your authenticator app.
+                        </div>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8,marginBottom:20}}>
+                          {twofaCodes.map((c,i)=>(
+                            <div key={i} style={{background:'var(--surface-raised)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 12px',fontFamily:'monospace',fontSize:'.85rem',letterSpacing:'0.05em',textAlign:'center'}}>
+                              {c}
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                          <button className="btn btn--primary" onClick={()=>{ const t=twofaCodes.join('\n'); navigator.clipboard?.writeText(t); showToast('Recovery codes copied!'); }}>
+                            Copy all codes
+                          </button>
+                          <button className="btn btn--ghost" onClick={()=>{ setTwofaStep('idle'); setTwofaCodes([]); }}>
+                            Done — I've saved them
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── disable confirm ── */}
+                    {twofaStep==='disable' && (
+                      <div>
+                        <div className="alert alert--danger" style={{marginBottom:16}}>
+                          Disabling 2FA reduces your account security. You'll only be protected by your email OTP.
+                        </div>
+                        <p style={{marginBottom:12,fontSize:'.88rem'}}>Enter your current authenticator code or a recovery code to confirm:</p>
+                        <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+                          <input
+                            className="input" placeholder="Code or XXXXX-XXXXX" value={twofaCode}
+                            onChange={e=>setTwofaCode(e.target.value)}
+                            style={{maxWidth:220,textAlign:'center',letterSpacing:'0.15em'}}
+                            autoFocus
+                          />
+                          <button className="btn btn--danger" onClick={twofa_disable} disabled={twofaBusy||!twofaCode.trim()}>
+                            {twofaBusy?'Disabling…':'Confirm disable'}
+                          </button>
+                          <button className="btn btn--ghost" onClick={()=>{ setTwofaStep('idle'); setTwofaCode(''); setTwofaErr(''); }}>
+                            Cancel
+                          </button>
+                        </div>
+                        {twofaErr && <div className="alert alert--danger" style={{marginTop:10}}>{twofaErr}</div>}
+                      </div>
+                    )}
+
+                    {/* ── regen recovery codes confirm ── */}
+                    {twofaStep==='regen' && (
+                      <div>
+                        <p style={{marginBottom:12,fontSize:'.88rem'}}>Enter your current authenticator code to generate new recovery codes (old ones will be invalidated):</p>
+                        <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+                          <input
+                            className="input" inputMode="numeric" maxLength={6} placeholder="000000" value={twofaCode}
+                            onChange={e=>setTwofaCode(e.target.value.replace(/\D/g,''))}
+                            style={{maxWidth:160,textAlign:'center',letterSpacing:'0.25em',fontSize:'1.1rem'}}
+                            autoFocus
+                          />
+                          <button className="btn btn--primary" onClick={twofa_regen} disabled={twofaBusy||twofaCode.length!==6}>
+                            {twofaBusy?'Regenerating…':'Regenerate'}
+                          </button>
+                          <button className="btn btn--ghost" onClick={()=>{ setTwofaStep('idle'); setTwofaCode(''); setTwofaErr(''); }}>
+                            Cancel
+                          </button>
+                        </div>
+                        {twofaErr && <div className="alert alert--danger" style={{marginTop:10}}>{twofaErr}</div>}
+                      </div>
+                    )}
+                  </section>
                 </div>
               </>
             )}
+
+            {/* ── SECURITY SCORE ENGINE ── */}
+            {tab==='score' && (
+              <SecurityScoreEngine
+                twofa={twofa}
+                breaches={breaches}
+                events={events}
+                sessions={sessions}
+                vault={vault}
+                vaultStats={vaultStats}
+                sec={sec}
+                onNavigate={setTab}
+              />
+            )}
+
+            {/* ── ALERT ENGINE ── */}
+            {tab==='alerts' && (
+              <AlertEngine showToast={showToast} logEvent={logEvent}/>
+            )}
+
+            {/* ── ACTIVITY LOG ── */}
+            {tab==='activity' && (() => {
+              const EVENT_META = {
+                'File Uploaded':    { dot:'primary', icon:<Upload size={14}/>,       kind:'info'    },
+                'File Downloaded':  { dot:'info',    icon:<Download size={14}/>,     kind:'info'    },
+                'File Deleted':     { dot:'danger',  icon:<Trash2 size={14}/>,       kind:'danger'  },
+                '2FA Enabled':      { dot:'success', icon:<Shield size={14}/>,       kind:'success' },
+                '2FA Disabled':     { dot:'warning', icon:<Shield size={14}/>,       kind:'warning' },
+                'Password Changed': { dot:'warning', icon:<Lock size={14}/>,         kind:'warning' },
+                'Login Success':    { dot:'success', icon:<CheckCircle size={14}/>,  kind:'success' },
+                'Login Failure':    { dot:'danger',  icon:<X size={14}/>,            kind:'danger'  },
+                'Account Linked':   { dot:'primary', icon:<Link size={14}/>,         kind:'info'    },
+                'Account Unlinked': { dot:'warning', icon:<Link size={14}/>,         kind:'warning' },
+              };
+              const dotColor = d => ({
+                primary:'var(--primary)',success:'var(--success)',danger:'var(--danger)',
+                warning:'var(--warning)',info:'var(--info)',
+              }[d]||'var(--t-muted)');
+
+              const counts = activityLog.reduce((acc, e) => { acc[e.type]=(acc[e.type]||0)+1; return acc; }, {});
+              const [filter, setFilter] = useState('all');
+              const [search, setSearch] = useState('');
+              const filtered = activityLog.filter(e =>
+                (filter==='all' || e.type===filter) &&
+                (!search || e.type.toLowerCase().includes(search.toLowerCase()) || e.detail.toLowerCase().includes(search.toLowerCase()))
+              );
+
+              return (
+                <>
+                  <section className="hero">
+                    <div className="hero-text">
+                      <span className="eyebrow">Audit</span>
+                      <h1 className="hero-title">Activity <span className="accent">Log</span></h1>
+                      <p className="hero-sub">A full audit trail of every security-relevant action on your account.</p>
+                    </div>
+                    <div className="hero-actions">
+                      <button className="btn btn--ghost" onClick={clearActivityLog}>
+                        <Trash2 size={14}/> Clear log
+                      </button>
+                    </div>
+                  </section>
+
+                  {/* KPI strip */}
+                  <div className="kpi-grid" style={{marginBottom:20}}>
+                    {[
+                      {label:'Total Events',    value:activityLog.length,                   kind:'primary'},
+                      {label:'Login Successes', value:counts['Login Success']||0,           kind:'success'},
+                      {label:'Login Failures',  value:counts['Login Failure']||0,           kind:'danger' },
+                      {label:'Vault Actions',   value:(counts['File Uploaded']||0)+(counts['File Downloaded']||0)+(counts['File Deleted']||0), kind:'info'},
+                    ].map(k=>(
+                      <KpiCard key={k.label} label={k.label} value={k.value} iconKind={k.kind}
+                        compare={<>tracked this session</>}>
+                        <Activity size={15}/>
+                      </KpiCard>
+                    ))}
+                  </div>
+
+                  <div className="grid">
+                    <section className="col-12 card">
+                      <div className="card-head" style={{flexWrap:'wrap',gap:10}}>
+                        <div className="card-title-wrap">
+                          <span className="eyebrow">Audit trail</span>
+                          <h2 className="card-title">{filtered.length} event{filtered.length!==1?'s':''}</h2>
+                        </div>
+                        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginLeft:'auto'}}>
+                          <input className="input" placeholder="Search events…" value={search}
+                            onChange={e=>setSearch(e.target.value)}
+                            style={{width:180,padding:'6px 10px',fontSize:12}}/>
+                          <select className="adm-select input" value={filter} onChange={e=>setFilter(e.target.value)}
+                            style={{fontSize:12,padding:'6px 10px',minWidth:160}}>
+                            <option value="all">All types</option>
+                            {Object.keys(EVENT_META).map(k=><option key={k} value={k}>{k}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      {filtered.length===0 ? (
+                        <div style={{textAlign:'center',padding:'40px 0',color:'var(--t-muted)',fontSize:13}}>
+                          <Activity size={32} style={{opacity:.2,margin:'0 auto 10px',display:'block'}}/>
+                          {activityLog.length===0
+                            ? 'No activity yet — events appear here as you use SyncVeil.'
+                            : 'No events match your filter.'}
+                        </div>
+                      ) : (
+                        <table className="table">
+                          <thead>
+                            <tr>
+                              <th style={{width:18}}></th>
+                              <th>Event</th>
+                              <th>Detail</th>
+                              <th style={{whiteSpace:'nowrap'}}>Time</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filtered.map(ev => {
+                              const meta = EVENT_META[ev.type] || { dot:'info', kind:'info' };
+                              return (
+                                <tr key={ev.id}>
+                                  <td>
+                                    <div style={{
+                                      width:8,height:8,borderRadius:'50%',
+                                      background:dotColor(meta.dot),flexShrink:0,
+                                    }}/>
+                                  </td>
+                                  <td>
+                                    <div style={{display:'flex',alignItems:'center',gap:7}}>
+                                      <span style={{
+                                        display:'inline-flex',alignItems:'center',justifyContent:'center',
+                                        width:24,height:24,borderRadius:6,
+                                        background:`var(--${meta.dot==='primary'?'primary':meta.dot==='success'?'success':meta.dot==='danger'?'danger':meta.dot==='warning'?'warning':'info'}-soft)`,
+                                        color:`var(--${meta.dot==='primary'?'primary':meta.dot==='success'?'success':meta.dot==='danger'?'danger':meta.dot==='warning'?'warning':'info'})`,
+                                        flexShrink:0,
+                                      }}>{meta.icon}</span>
+                                      <span style={{fontWeight:600,fontSize:12.5,color:'var(--t-base)'}}>{ev.type}</span>
+                                    </div>
+                                  </td>
+                                  <td style={{fontSize:12,color:'var(--t-muted)',maxWidth:340,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
+                                    title={ev.detail}>{ev.detail||'—'}</td>
+                                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,color:'var(--t-light)',whiteSpace:'nowrap'}}>
+                                    {new Date(ev.ts).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </section>
+                  </div>
+                </>
+              );
+            })()}
 
           </main>
 

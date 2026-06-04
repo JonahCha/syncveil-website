@@ -70,8 +70,21 @@ export default function AuthChoice({ onAuth, onSwitchView, initialMode, initialT
     setLoading(true); setErr('');
     try {
       const res = await authAPI.verifyLoginChallenge(savedEmail||form.email, form.otp);
-      if(res.success) onAuth?.(res.user);
+      if(res.totpRequired){ setSuc(''); go('totp'); }
+      else if(res.success) onAuth?.(res.user);
     } catch(e){ setErr(e.message||'Invalid code'); }
+    finally{ setLoading(false); }
+  };
+
+  // ── TOTP (authenticator app) ──────────────────────────────────────────────
+  const handleTotp = async e => {
+    e.preventDefault();
+    if(!form.otp.trim()){setErr('Enter the 6-digit code from your authenticator app.');return;}
+    setLoading(true); setErr('');
+    try {
+      const res = await authAPI.verifyTotpChallenge(savedEmail||form.email, form.otp);
+      if(res.success) onAuth?.(res.user);
+    } catch(e){ setErr(e.message||'Invalid authenticator code'); }
     finally{ setLoading(false); }
   };
 
@@ -172,6 +185,7 @@ export default function AuthChoice({ onAuth, onSwitchView, initialMode, initialT
     signup1: { h:'Your data belongs to you, not us.', p:'Create your account and take back control of your digital identity with military-grade encryption.' },
     signup2: { h:'Almost there.', p:'Just a few more details to personalise your security workspace.' },
     otp:     { h:'Two-factor authentication.', p:'Enter the code from your email to verify it\'s really you. Codes expire in 10 minutes.' },
+    totp:    { h:'Authenticator verification.', p:'Enter the 6-digit code from your authenticator app (Google Authenticator, Microsoft Authenticator, etc).' },
     verify:  { h:'Verify your email address.', p:'We sent a 6-digit code to your inbox. Enter it below to activate your account.' },
     forgot:  { h:'Forgotten passwords happen.', p:'Enter your email and we\'ll send a reset code. You\'ll be back in seconds.' },
     reset:   { h:'Create a new password.', p:'Use the code from your email together with your new password to regain access.' },
@@ -286,6 +300,28 @@ export default function AuthChoice({ onAuth, onSwitchView, initialMode, initialT
                   {submitBtn('Verify code')}
                   <button type="button" className="btn btn--ghost" style={{width:'100%',justifyContent:'center'}} onClick={handleResendOtp}>
                     Resend code
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* ── TOTP (authenticator app) ── */}
+            {mode==='totp' && (
+              <>
+                <h2>Authenticator code</h2>
+                <p className="sub">Open your authenticator app and enter the 6-digit code for <strong>SyncVeil</strong>.</p>
+                <form className="auth-form" onSubmit={handleTotp}>
+                  <div className="otp-box">
+                    <input type="text" inputMode="numeric" maxLength={8} value={form.otp} onChange={setF('otp')} placeholder="——————" autoFocus style={{letterSpacing:'0.2em'}}/>
+                  </div>
+                  <p className="sub" style={{fontSize:'0.78rem',marginTop:4,textAlign:'center',opacity:.7}}>
+                    Lost your device? Enter a recovery code instead (format: XXXXX-XXXXX).
+                  </p>
+                  {err && <Err msg={err}/>}
+                  {suc && <Suc msg={suc}/>}
+                  {submitBtn('Verify')}
+                  <button type="button" className="btn btn--ghost" style={{width:'100%',justifyContent:'center'}} onClick={()=>go('login')}>
+                    Back to sign in
                   </button>
                 </form>
               </>

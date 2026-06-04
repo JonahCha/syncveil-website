@@ -26,14 +26,15 @@ class User(Base):
     updated_at       = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     last_login_at    = Column(DateTime, nullable=True)
 
-    sessions           = relationship("Session",            back_populates="user", cascade="all, delete-orphan")
-    otp_attempts       = relationship("OTPAttempt",         back_populates="user", cascade="all, delete-orphan")
-    email_verifications= relationship("EmailVerification",  back_populates="user", cascade="all, delete-orphan")
-    login_logs         = relationship("LoginLog",           back_populates="user", cascade="all, delete-orphan")
-    connected_accounts = relationship("ConnectedAccount",   back_populates="user", cascade="all, delete-orphan")
-    password_resets    = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
-    vault_files        = relationship("VaultFile",          back_populates="user", cascade="all, delete-orphan")
+    sessions           = relationship("Session",                back_populates="user", cascade="all, delete-orphan")
+    otp_attempts       = relationship("OTPAttempt",             back_populates="user", cascade="all, delete-orphan")
+    email_verifications= relationship("EmailVerification",      back_populates="user", cascade="all, delete-orphan")
+    login_logs         = relationship("LoginLog",               back_populates="user", cascade="all, delete-orphan")
+    connected_accounts = relationship("ConnectedAccount",       back_populates="user", cascade="all, delete-orphan")
+    password_resets    = relationship("PasswordResetToken",     back_populates="user", cascade="all, delete-orphan")
+    vault_files        = relationship("VaultFile",              back_populates="user", cascade="all, delete-orphan")
     vault_audit_logs   = relationship("VaultAuditLog", foreign_keys="VaultAuditLog.user_id", cascade="all, delete-orphan")
+    two_factor_config  = relationship("TwoFactorConfig",        back_populates="user", uselist=False, cascade="all, delete-orphan")
 
     __table_args__ = (
         Index('idx_user_email_verified', 'email', 'email_verified'),
@@ -124,13 +125,17 @@ class Session(Base):
     user_id            = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     refresh_token_hash = Column(String(255), nullable=False, unique=True, index=True)
     device_info        = Column(Text, nullable=True)
+    device_name        = Column(String(200), nullable=True)   # parsed friendly name
     ip_address         = Column(String(45), nullable=True)
+    location           = Column(String(255), nullable=True)   # city, country
     created_at         = Column(DateTime, default=datetime.utcnow, nullable=False)
     expires_at         = Column(DateTime, nullable=False)
     last_used_at       = Column(DateTime, default=datetime.utcnow, nullable=False)
     revoked            = Column(Boolean, default=False, nullable=False)
     revoked_at         = Column(DateTime, nullable=True)
     revoked_reason     = Column(String(255), nullable=True)
+    trusted            = Column(Boolean, default=False, nullable=False)
+    trusted_at         = Column(DateTime, nullable=True)
 
     user = relationship("User", back_populates="sessions")
     __table_args__ = (
@@ -187,6 +192,40 @@ class LoginLog(Base):
         Index('idx_login_log_user_time', 'user_id', 'timestamp'),
         Index('idx_login_log_success', 'success', 'timestamp'),
     )
+
+
+class TwoFactorConfig(Base):
+    """Per-user TOTP 2FA configuration."""
+    __tablename__ = "two_factor_configs"
+    id                  = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id             = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    enabled             = Column(Boolean, default=False, nullable=False)
+    totp_secret         = Column(String(64), nullable=True)          # active secret (base32)
+    totp_secret_pending = Column(String(64), nullable=True)          # not-yet-confirmed secret
+    totp_pending_at     = Column(DateTime, nullable=True)
+    enabled_at          = Column(DateTime, nullable=True)
+    disabled_at         = Column(DateTime, nullable=True)
+    created_at          = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at          = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    user           = relationship("User", back_populates="two_factor_config")
+    recovery_codes = relationship("TwoFactorRecoveryCode", back_populates="config", cascade="all, delete-orphan")
+
+
+class TwoFactorRecoveryCode(Base):
+    """Hashed one-time recovery codes for 2FA backup."""
+    __tablename__ = "two_factor_recovery_codes"
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id    = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    config_id  = Column(UUID(as_uuid=True), ForeignKey("two_factor_configs.id"), nullable=True)
+    code_hash  = Column(String(64), nullable=False)
+    used       = Column(Boolean, default=False, nullable=False)
+    used_at    = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    config = relationship("TwoFactorConfig", back_populates="recovery_codes")
+
+    __table_args__ = (Index("idx_2fa_recovery_user_used", "user_id", "used"),)
 
 
 class AdminUser(Base):
